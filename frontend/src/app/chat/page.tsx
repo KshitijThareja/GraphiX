@@ -50,7 +50,7 @@ export default function ChatPage() {
     setInput("")
     setIsLoading(true)
 
-    // In a real implementation, this would call the FastAPI backend with OpenAI integration
+    // In a real implementation, this would call the FastAPI backend with LLM integration
     // For now, we'll simulate a response after a delay
     setTimeout(() => {
       const responses = [
