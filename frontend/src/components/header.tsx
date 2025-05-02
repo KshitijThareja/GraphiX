@@ -12,9 +12,18 @@ import {
 } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/providers/auth-provider"
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu"
 
 export default function Header() {
   const pathname = usePathname()
+  const { user, isAuthenticated, login, logout } = useAuth()
 
   const navItems = [
     { name: "Home", href: "/", icon: HomeIcon },
@@ -52,9 +61,23 @@ export default function Header() {
         </div>
         <div className="flex items-center gap-4">
           <ModeToggle />
-          <Button asChild variant="default" size="sm">
-            <Link href="/visualize">Analyze Repository</Link>
-          </Button>
+          {isAuthenticated ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger>
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.avatar_url} />
+                  <AvatarFallback>{user?.login?.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={logout}>Logout</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button onClick={login} variant="default" size="sm">
+              Login with GitHub
+            </Button>
+          )}
         </div>
       </div>
     </header>

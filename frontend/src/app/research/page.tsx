@@ -10,12 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { DownloadIcon, BarChart3Icon, DatabaseIcon, GitlabIcon as GitHubIcon } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from "@/providers/auth-provider"
 
 export default function ResearchPage() {
   const [selectedLanguage, setSelectedLanguage] = useState("python")
   const [repoCount, setRepoCount] = useState("10")
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["complexity", "coupling", "cohesion"])
   const { toast } = useToast()
+  const { isAuthenticated } = useAuth()
 
   const handleMetricChange = (metric: string) => {
     if (selectedMetrics.includes(metric)) {
@@ -25,18 +27,82 @@ export default function ResearchPage() {
     }
   }
 
-  const handleGenerateDataset = () => {
-    toast({
-      title: "Dataset generation started",
-      description: `Generating dataset for ${repoCount} ${selectedLanguage} repositories with metrics: ${selectedMetrics.join(", ")}`,
-    })
+  const handleGenerateDataset = async () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to generate a dataset",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/dataset`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({
+          language: selectedLanguage,
+          repo_count: parseInt(repoCount),
+          metrics: selectedMetrics
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(await response.text())
+      }
+
+      const data = await response.json()
+      toast({
+        title: "Dataset generated",
+        description: `Generated dataset for ${repoCount} ${selectedLanguage} repositories`,
+      })
+    } catch (error) {
+      toast({
+        title: "Dataset generation failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleDownloadDataset = () => {
-    toast({
-      title: "Dataset downloaded",
-      description: "The research dataset has been downloaded as a CSV file",
-    })
+  const handleDownloadDataset = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/dataset`, {
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(await response.text())
+      }
+
+      const data = await response.json()
+      const blob = new Blob([JSON.stringify(data.dataset, null, 2)], { type: "application/json" })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "dataset.json"
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+
+      toast({
+        title: "Dataset downloaded",
+        description: "The research dataset has been downloaded as a JSON file",
+      })
+    } catch (error) {
+      toast({
+        title: "Dataset download failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      })
+    }
   }
 
   const metrics = [
@@ -173,7 +239,7 @@ export default function ResearchPage() {
 
                   <div>
                     <Label htmlFor="metric">Comparison Metric</Label>
-                    <Select defaultValue="precision">
+                    <Select defaultValue="runtime">
                       <SelectTrigger id="metric">
                         <SelectValue placeholder="Select metric" />
                       </SelectTrigger>
@@ -196,7 +262,30 @@ export default function ResearchPage() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-end">
-              <Button>
+              <Button onClick={async () => {
+                try {
+                  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/benchmark`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "Authorization": `Bearer ${localStorage.getItem("token")}`
+                    },
+                    body: JSON.stringify({ repo_url: "https://github.com/psf/requests" }) // Default repo
+                  })
+                  if (!response.ok) throw new Error(await response.text())
+                  const data = await response.json()
+                  toast({
+                    title: "Benchmark completed",
+                    description: `Runtime: ${data.runtime} seconds`,
+                  })
+                } catch (error) {
+                  toast({
+                    title: "Benchmark failed",
+                    description: error instanceof Error ? error.message : "Unknown error",
+                    variant: "destructive",
+                  })
+                }
+              }}>
                 <BarChart3Icon className="h-4 w-4 mr-2" />
                 Run Benchmark
               </Button>
@@ -244,11 +333,39 @@ export default function ResearchPage() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
-              <Button>
+              <Button onClick={async () => {
+                try {
+                  const repoList = (document.getElementById("repoList") as HTMLInputElement).value.split("\n")
+                  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/dataset`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "Authorization": `Bearer ${localStorage.getItem("token")}`
+                    },
+                    body: JSON.stringify({
+                      language: "python",
+                      repo_count: repoList.length,
+                      metrics: selectedMetrics
+                    })
+                  })
+                  if (!response.ok) throw new Error(await response.text())
+                  const data = await response.json()
+                  toast({
+                    title: "Metrics collected",
+                    description: "Metrics have been collected successfully",
+                  })
+                } catch (error) {
+                  toast({
+                    title: "Metrics collection failed",
+                    description: error instanceof Error ? error.message : "Unknown error",
+                    variant: "destructive",
+                  })
+                }
+              }}>
                 <GitHubIcon className="h-4 w-4 mr-2" />
                 Collect Metrics
               </Button>
-              <Button variant="outline">
+              <Button variant="outline" onClick={handleDownloadDataset}>
                 <DownloadIcon className="h-4 w-4 mr-2" />
                 Export Template
               </Button>

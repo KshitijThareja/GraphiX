@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,6 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { SendIcon, BotIcon, UserIcon } from "lucide-react"
+import { useSearchParams } from "next/navigation"
+import { useToast } from "@/components/ui/use-toast"
 
 interface Message {
   role: "user" | "assistant"
@@ -20,14 +21,15 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content:
-        "Hello! I'm the GraphiX AI assistant. I can help you understand your codebase. What would you like to know about your repository?",
+      content: "Hello! I'm the GraphiX AI assistant. I can help you understand your codebase. What would you like to know about your repository?",
       timestamp: new Date(),
     },
   ])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -50,28 +52,38 @@ export default function ChatPage() {
     setInput("")
     setIsLoading(true)
 
-    // In a real implementation, this would call the FastAPI backend with LLM integration
-    // For now, we'll simulate a response after a delay
-    setTimeout(() => {
-      const responses = [
-        "Based on the callgraph analysis, the `process_data` function is the most complex with a cyclomatic complexity of 8. It has multiple dependencies and might be a good candidate for refactoring.",
-        "The repository structure shows a typical MVC pattern. The controller functions have high coupling with the model layer, which could be improved by introducing a service layer.",
-        "Looking at the code, I notice that error handling is inconsistent across modules. The `log_error` function is called from multiple places but with different parameters.",
-        "The `validate_input` function is well-designed with clear validation rules. It's called by `process_data` and helps maintain data integrity throughout the application.",
-        "There appears to be a potential memory leak in the `transform_data` function. It allocates resources but doesn't properly release them in all code paths.",
-      ]
+    try {
+      const repo = searchParams.get("repo")
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({ query: input + (repo ? ` about ${repo}` : "") })
+      })
 
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)]
+      if (!response.ok) {
+        throw new Error(await response.text())
+      }
 
+      const data = await response.json()
       const assistantMessage: Message = {
         role: "assistant",
-        content: randomResponse,
+        content: data.response,
         timestamp: new Date(),
       }
 
       setMessages((prev) => [...prev, assistantMessage])
+    } catch (error) {
+      toast({
+        title: "Chat failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      })
+    } finally {
       setIsLoading(false)
-    }, 1500)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

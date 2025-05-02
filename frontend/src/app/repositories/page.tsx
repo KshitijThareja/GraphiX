@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { GitlabIcon as GitHubLogoIcon, FolderIcon, BarChart3Icon, MessageSquareIcon, FileTextIcon } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from "@/providers/auth-provider"
 
 interface Repository {
   id: number
@@ -25,6 +25,7 @@ export default function RepositoriesPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [repositories, setRepositories] = useState<Repository[]>([])
   const { toast } = useToast()
+  const { isAuthenticated } = useAuth()
 
   const handleSearch = async () => {
     if (!searchQuery) {
@@ -38,51 +39,42 @@ export default function RepositoriesPage() {
 
     setIsLoading(true)
 
-    // In a real implementation, this would call the FastAPI backend to search GitHub
-    // For now, we'll simulate a response after a delay
-    setTimeout(() => {
-      // Sample repository data for demonstration
-      const sampleRepos = [
-        {
-          id: 1,
-          name: "tensorflow/tensorflow",
-          description: "An Open Source Machine Learning Framework for Everyone",
-          url: "https://github.com/tensorflow/tensorflow",
-          stars: 178000,
-          lastAnalyzed: "2023-10-15",
-        },
-        {
-          id: 2,
-          name: "facebook/react",
-          description: "A declarative, efficient, and flexible JavaScript library for building user interfaces",
-          url: "https://github.com/facebook/react",
-          stars: 215000,
-        },
-        {
-          id: 3,
-          name: "django/django",
-          description: "The Web framework for perfectionists with deadlines",
-          url: "https://github.com/django/django",
-          stars: 72000,
-          lastAnalyzed: "2023-11-02",
-        },
-        {
-          id: 4,
-          name: "microsoft/vscode",
-          description: "Visual Studio Code",
-          url: "https://github.com/microsoft/vscode",
-          stars: 154000,
-        },
-      ]
+    try {
+      const response = await fetch(`https://api.github.com/search/repositories?q=${searchQuery}&per_page=10`, {
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Accept": "application/vnd.github.v3+json"
+        }
+      })
 
-      setRepositories(sampleRepos)
-      setIsLoading(false)
+      if (!response.ok) {
+        throw new Error(await response.text())
+      }
+
+      const data = await response.json()
+      const repos = data.items.map((item: any) => ({
+        id: item.id,
+        name: item.full_name,
+        description: item.description || "No description",
+        url: item.html_url,
+        stars: item.stargazers_count,
+        lastAnalyzed: item.updated_at
+      }))
+      setRepositories(repos)
 
       toast({
         title: "Repositories found",
-        description: `Found ${sampleRepos.length} repositories matching "${searchQuery}"`,
+        description: `Found ${repos.length} repositories matching "${searchQuery}"`,
       })
-    }, 1500)
+    } catch (error) {
+      toast({
+        title: "Search failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -145,7 +137,7 @@ export default function RepositoriesPage() {
                   </a>
                 </div>
                 {repo.lastAnalyzed && (
-                  <div className="mt-2 text-sm text-muted-foreground">Last analyzed: {repo.lastAnalyzed}</div>
+                  <div className="mt-2 text-sm text-muted-foreground">Last analyzed: {new Date(repo.lastAnalyzed).toLocaleDateString()}</div>
                 )}
               </CardContent>
               <CardFooter className="flex gap-2">

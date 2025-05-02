@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { RefreshCwIcon, AlertTriangleIcon, CheckCircleIcon, XCircleIcon } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { useSearchParams } from "next/navigation"
 
 interface RefactoringItem {
   id: string
@@ -21,146 +22,58 @@ interface RefactoringItem {
 export default function RefactoringPage() {
   const [selectedTab, setSelectedTab] = useState("all")
   const { toast } = useToast()
+  const searchParams = useSearchParams()
+  const [refactoringSuggestions, setRefactoringSuggestions] = useState<RefactoringItem[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    const repo = searchParams.get("repo")
+    if (repo) {
+      setIsLoading(true)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/refactoring`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({ repo_url: repo })
+      })
+        .then(res => {
+          if (!res.ok) throw new Error("Failed to fetch refactoring suggestions")
+          return res.json()
+        })
+        .then(data => setRefactoringSuggestions(data.suggestions))
+        .catch(err => toast({
+          title: "Error",
+          description: err.message,
+          variant: "destructive",
+        }))
+        .finally(() => setIsLoading(false))
+    }
+  }, [searchParams])
 
   const handleApply = (id: string) => {
     toast({
       title: "Refactoring applied",
       description: `The refactoring suggestion ${id} has been applied to your codebase`,
     })
+    // TODO: Implement actual code modification (requires file system access)
   }
 
   const handleApplyAll = () => {
+    refactoringSuggestions.forEach((item) => handleApply(item.id))
     toast({
       title: "All refactorings applied",
       description: "All refactoring suggestions have been applied to your codebase",
     })
   }
 
-  const refactoringSuggestions: RefactoringItem[] = [
-    {
-      id: "REF-001",
-      title: "Extract Method in process_data",
-      description:
-        "The process_data function is too complex (complexity: 8). Extract the data transformation logic into a separate method.",
-      severity: "high",
-      location: "main.py:45-67",
-      before: `def process_data(data):
-    # Validate input
-    if not validate_input(data):
-        log_error("Invalid input data")
-        return None
-        
-    # Transform data - this part is complex and should be extracted
-    result = {}
-    for key, value in data.items():
-        if key.startswith("user_"):
-            user_id = key.split("_")[1]
-            if user_id not in result:
-                result[user_id] = {}
-            result[user_id]["name"] = value
-        elif key.startswith("score_"):
-            user_id = key.split("_")[1]
-            if user_id not in result:
-                result[user_id] = {}
-            result[user_id]["score"] = int(value)
-    
-    # Save results
-    if not save_results(result):
-        log_error("Failed to save results")
-        return None
-        
-    return result`,
-      after: `def process_data(data):
-    # Validate input
-    if not validate_input(data):
-        log_error("Invalid input data")
-        return None
-        
-    # Extract transformation to a new method
-    result = transform_user_data(data)
-    
-    # Save results
-    if not save_results(result):
-        log_error("Failed to save results")
-        return None
-        
-    return result
-    
-def transform_user_data(data):
-    result = {}
-    for key, value in data.items():
-        if key.startswith("user_"):
-            user_id = key.split("_")[1]
-            if user_id not in result:
-                result[user_id] = {}
-            result[user_id]["name"] = value
-        elif key.startswith("score_"):
-            user_id = key.split("_")[1]
-            if user_id not in result:
-                result[user_id] = {}
-            result[user_id]["score"] = int(value)
-    return result`,
-    },
-    {
-      id: "REF-002",
-      title: "Add Error Handling in transform_data",
-      description: "The transform_data function doesn't handle potential exceptions when processing data.",
-      severity: "medium",
-      location: "transform.py:23-35",
-      before: `def transform_data(data):
-    result = {}
-    for item in data:
-        key = item["id"]
-        value = process_item(item)
-        result[key] = value
-    return result`,
-      after: `def transform_data(data):
-    result = {}
-    for item in data:
-        try:
-            key = item["id"]
-            value = process_item(item)
-            result[key] = value
-        except KeyError:
-            log_error(f"Missing 'id' in item: {item}")
-        except Exception as e:
-            log_error(f"Error processing item: {str(e)}")
-    return result`,
-    },
-    {
-      id: "REF-003",
-      title: "Use Constants for Magic Strings",
-      description: "Replace magic strings with named constants for better maintainability.",
-      severity: "low",
-      location: "utils.py:12-18",
-      before: `def get_status(code):
-    if code == "A":
-        return "Active"
-    elif code == "I":
-        return "Inactive"
-    elif code == "P":
-        return "Pending"
-    return "Unknown"`,
-      after: `# Define constants at the module level
-STATUS_ACTIVE = "A"
-STATUS_INACTIVE = "I"
-STATUS_PENDING = "P"
-
-def get_status(code):
-    if code == STATUS_ACTIVE:
-        return "Active"
-    elif code == STATUS_INACTIVE:
-        return "Inactive"
-    elif code == STATUS_PENDING:
-        return "Pending"
-    return "Unknown"`,
-    },
-  ]
-
   const filteredSuggestions =
     selectedTab === "all"
       ? refactoringSuggestions
       : refactoringSuggestions.filter((item) => item.severity === selectedTab)
+
+  if (isLoading) return <div>Loading...</div>
 
   return (
     <div className="container py-12">
