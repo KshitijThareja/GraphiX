@@ -4,36 +4,29 @@ from typing import Optional, List
 from pydantic import HttpUrl, BaseModel
 from sqlalchemy import JSON, Column, DateTime, Float, Integer, String
 from ..services.callgraph import CallgraphGenerator
-from ..models.base import Base, oauth2_scheme, Settings, get_db
+from ..models.base import Base, oauth2_scheme, settings, get_db
 from ..models.user import User
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 import time
-from transformers import pipeline, AutoModelForSeq2SeqLM, AutoTokenizer
+import google.generativeai as genai
 import logging
 
 router = APIRouter(prefix="/analysis")
-settings = Settings()
 logger = logging.getLogger(__name__)
 
-# Load the CodeT5 model at startup to avoid reloading for each request
-try:
-    checkpoint = "Salesforce/codet5-base"
-    tokenizer = AutoTokenizer.from_pretrained(checkpoint)
-    model = AutoModelForSeq2SeqLM.from_pretrained(checkpoint)
-    llm_pipeline = pipeline(
-        "text2text-generation",
-        model=model,
-        tokenizer=tokenizer,
-        device=-1,  # CPU
-    )
-    logger.info(f"Successfully loaded model for LLM: {checkpoint}")
-except Exception as e:
-    logger.error(f"Failed to load model {checkpoint}: {str(e)}")
-    raise Exception(f"Model loading failed: {str(e)}")
+# Configure Gemini API
+GEMINI_API_KEY = settings.GEMINI_API_KEY
+genai.configure(api_key=GEMINI_API_KEY)
+
+# Initialize Gemini models
+flash_model = genai.GenerativeModel("gemini-1.5-flash")
+pro_model = genai.GenerativeModel("gemini-1.5-pro")
+
 
 class AnalyzeRequest(BaseModel):
     repo_url: HttpUrl
+
 
 class AnalysisResult(Base):
     __tablename__ = 'analysis_results'
@@ -43,29 +36,40 @@ class AnalysisResult(Base):
     runtime = Column(Float)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+
 class DatasetRequest(BaseModel):
     language: str = "python"
     repo_count: int = 10
     metrics: List[str] = ["complexity", "coupling", "cohesion"]
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+
+class ChatRequest(BaseModel):
+    query: str
+    repo_url: Optional[HttpUrl] = None
+
+
+async def get_current_user(token: str = Depends(oauth2_scheme),
+                           db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(token,
+                             settings.SECRET_KEY,
+                             algorithms=[settings.ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    
+
     user = db.query(User).filter(User.login == username).first()
     if user is None:
         raise credentials_exception
     return user
+
 
 @router.post("/callgraph")
 async def generate_callgraph(
@@ -76,10 +80,11 @@ async def generate_callgraph(
     generator = CallgraphGenerator()
     try:
         start_time = time.time()
-        repo_path = await generator.clone_repository(str(request.repo_url), current_user.access_token)
+        repo_path = await generator.clone_repository(str(request.repo_url),
+                                                     current_user.access_token)
         callgraph = await generator.analyze_repository(repo_path)
         runtime = time.time() - start_time
-        
+
         analysis = AnalysisResult(
             repo_url=str(request.repo_url),
             callgraph=callgraph,
@@ -87,7 +92,7 @@ async def generate_callgraph(
         )
         db.add(analysis)
         db.commit()
-        
+
         await generator.cleanup()
         return callgraph
     except Exception as e:
@@ -97,10 +102,13 @@ async def generate_callgraph(
             detail=f"Failed to generate callgraph: {str(e)}"
         )
 
+
 @router.post("/enrich")
 async def enrich_callgraph(
     callgraph: dict,
-    framework: Optional[str] = Query(None, description="Framework to detect (django, flask, fastapi)"),
+    framework: Optional[str] = Query(
+        None, description="Framework to detect (django, flask, fastapi)"
+    ),
     current_user: User = Depends(get_current_user)
 ):
     try:
@@ -115,14 +123,19 @@ async def enrich_callgraph(
             detail=f"Failed to enrich callgraph: {str(e)}"
         )
 
+
 @router.get("/dataset")
 async def export_dataset(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     results = db.query(AnalysisResult).all()
-    dataset = [{"repo_url": r.repo_url, "callgraph": r.callgraph, "runtime": r.runtime, "created_at": r.created_at.isoformat()} for r in results]
+    dataset = [{"repo_url": r.repo_url,
+                "callgraph": r.callgraph,
+                "runtime": r.runtime,
+                "created_at": r.created_at.isoformat()} for r in results]
     return {"dataset": dataset}
+
 
 @router.post("/dataset")
 async def generate_dataset(
@@ -133,24 +146,30 @@ async def generate_dataset(
     generator = CallgraphGenerator()
     dataset = []
     try:
-        # Simulate fetching repositories (replace with actual GitHub API call in production)
-        repo_urls = [f"https://github.com/{i}" for i in range(request.repo_count)]  # Placeholder
+        repo_urls = [
+            f"https://github.com/{i}"
+            for i in range(request.repo_count)
+        ]
         for url in repo_urls:
-            repo_path = await generator.clone_repository(url, current_user.access_token)
+            repo_path = await generator.clone_repository(
+                url, current_user.access_token
+            )
             callgraph = await generator.analyze_repository(repo_path)
             dataset.append({
                 "repo_url": url,
                 "callgraph": callgraph,
-                "metrics": {metric: _calculate_metric(callgraph, metric) for metric in request.metrics}
+                "metrics": {metric: _calculate_metric(callgraph, metric)
+                            for metric in request.metrics}
             })
             await generator.cleanup()
-        
+
         return {"dataset": dataset}
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate dataset: {str(e)}"
         )
+
 
 @router.post("/benchmark")
 async def benchmark(
@@ -169,27 +188,61 @@ async def benchmark(
             detail=f"Failed to benchmark: {str(e)}"
         )
 
+
 @router.post("/chat")
 async def chat_with_llm(
-    request: dict,
+    request: ChatRequest,
     current_user: User = Depends(get_current_user)
 ):
     try:
-        query = request.get("query")
+        query = request.query
         if not query:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Query is required"
             )
-        # Adjust prompt for CodeT5 (encoder-decoder model)
-        prompt = f"Answer the following question: {query}"
-        response = llm_pipeline(prompt, max_length=150)[0]['generated_text']
-        return {"response": response}
+
+        context = "No codebase context provided."
+        if request.repo_url:
+            generator = CallgraphGenerator()
+            try:
+                repo_path = await generator.clone_repository(
+                    str(request.repo_url),
+                    current_user.access_token
+                )
+                callgraph = await generator.analyze_repository(repo_path)
+                await generator.cleanup()
+
+                context = "Codebase Context:\n"
+                for node in callgraph['nodes']:
+                    func_name = node['id'].split('.')[-1]
+                    docstring = node['metadata'].get('docstring',
+                                                     'No docstring available.')
+                    complexity = node['complexity']
+                    context += (f"- Function: {func_name}\n"
+                                f"  Docstring: {docstring}\n"
+                                f"  Complexity: {complexity}\n")
+            except Exception as e:
+                logger.error("Failed to analyze repository for context: "
+                             f"{str(e)}")
+                context = f"Failed to analyze repository: {str(e)}"
+        prompt = (
+                f"Given the following codebase context:\n{context}\n\n"
+                f"Answer the following question about the codebase:\n{query}"
+        )
+        response = flash_model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                max_output_tokens=150
+            )
+        )
+        return {"response": response.text}
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process chat query: {str(e)}"
         )
+
 
 @router.post("/documentation")
 async def generate_documentation(
@@ -198,14 +251,20 @@ async def generate_documentation(
 ):
     try:
         generator = CallgraphGenerator()
-        repo_path = await generator.clone_repository(str(request.repo_url), current_user.access_token)
+        repo_path = await generator.clone_repository(str(request.repo_url),
+                                                     current_user.access_token)
         callgraph = await generator.analyze_repository(repo_path)
         await generator.cleanup()
 
-        doc = f"# Repository Documentation\n\n## Overview\nThis repository contains a codebase analyzed with GraphiX.\n\n## Functions\n"
+        doc = ("# Repository Documentation\n\n"
+               "## Overview\n"
+               "This repository contains a codebase analyzed with GraphiX.\n\n"
+               "## Functions\n")
         for node in callgraph['nodes']:
             doc += f"### {node['id'].split('.')[-1]}()\n"
-            doc += f"**Description**: {node['metadata'].get('docstring', 'No description available.')}\n"
+            doc += (f"**Description**: "
+                    f"{node['metadata'].get('docstring',
+                                            'No description available.')}\n")
             doc += "**Parameters**: None\n"
             doc += "**Returns**: None\n"
             doc += f"**Complexity**: {node['complexity']}\n\n"
@@ -221,6 +280,7 @@ async def generate_documentation(
             detail=f"Failed to generate documentation: {str(e)}"
         )
 
+
 @router.post("/refactoring")
 async def generate_refactoring(
     request: AnalyzeRequest,
@@ -228,24 +288,37 @@ async def generate_refactoring(
 ):
     try:
         generator = CallgraphGenerator()
-        repo_path = await generator.clone_repository(str(request.repo_url), current_user.access_token)
+        repo_path = await generator.clone_repository(str(request.repo_url),
+                                                     current_user.access_token)
         callgraph = await generator.analyze_repository(repo_path)
         await generator.cleanup()
 
         suggestions = []
         for node in callgraph['nodes']:
             if node['complexity'] > 5:
-                # Adjust prompt for CodeT5
-                prompt = f"Refactor this function with complexity {node['complexity']}:\nFunction: {node['id']}\nFile: {node['file']}\nProvide before and after code snippets."
-                response = llm_pipeline(prompt, max_length=300)[0]['generated_text']
+                prompt = (
+                    f"Refactor this function with complexity {node['complexity']}:\n"
+                    f"Function: {node['id']}\n"
+                    f"File: {node['file']}\n"
+                    "Provide before and after code snippets."
+                )
+                response = pro_model.generate_content(
+                    prompt,
+                    generation_config=genai.types.GenerationConfig(
+                        max_output_tokens=300
+                    )
+                )
+                response_text = response.text
                 suggestions.append({
                     "id": f"REF-{node['id'].replace('.', '-')}",
                     "title": f"Refactor {node['id'].split('.')[-1]}",
-                    "description": response.split('.')[0] + '.',
+                    "description": response_text.split('.')[0] + '.',
                     "severity": "high" if node['complexity'] > 7 else "medium",
                     "location": f"{node['file']}:{node['metadata'].get('lineno', 1)}",
-                    "before": response.split("After:")[0].split("Before:")[1] if "Before:" in response else "N/A",
-                    "after": response.split("After:")[1] if "After:" in response else "N/A"
+                    "before": (response_text.split("After:")[0].split("Before:")[1].strip()
+                               if "Before:" in response_text else "N/A"),
+                    "after": (response_text.split("After:")[1].strip()
+                              if "After:" in response_text else "N/A")
                 })
         return {"suggestions": suggestions}
     except Exception as e:
@@ -253,6 +326,7 @@ async def generate_refactoring(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate refactoring suggestions: {str(e)}"
         )
+
 
 def _enrich_django(callgraph: dict) -> dict:
     for node in callgraph['nodes']:
@@ -265,6 +339,7 @@ def _enrich_django(callgraph: dict) -> dict:
                 node['tags'] = ['api-view']
     return callgraph
 
+
 def _enrich_flask(callgraph: dict) -> dict:
     for node in callgraph['nodes']:
         if 'routes.' in node['id'] or 'blueprints.' in node['id']:
@@ -276,11 +351,15 @@ def _enrich_flask(callgraph: dict) -> dict:
                 node['tags'] = ['http-post']
     return callgraph
 
+
 def _calculate_metric(callgraph: dict, metric: str) -> float:
     if metric == "complexity":
-        return sum(node['complexity'] for node in callgraph['nodes']) / len(callgraph['nodes']) if callgraph['nodes'] else 0
+        return (sum(node['complexity'] for node in callgraph['nodes']) /
+                len(callgraph['nodes'])) if callgraph['nodes'] else 0
     elif metric == "coupling":
-        return len(callgraph['links']) / len(callgraph['nodes']) if callgraph['nodes'] else 0
+        return (len(callgraph['links']) /
+                len(callgraph['nodes'])) if callgraph['nodes'] else 0
     elif metric == "cohesion":
-        return 1.0  # Placeholder, requires deeper analysis
+        return 1.0
+    return 0.0
     return 0.0

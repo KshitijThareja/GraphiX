@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2AuthorizationCodeBearer
-from jose import JWTError, jwt
+from jose import jwt
 from pydantic import BaseModel
 import httpx
-from ..models.base import SessionLocal, settings, get_db
+from ..models.base import settings, get_db
 from datetime import datetime, timedelta
 from typing import Optional
 from sqlalchemy.orm import Session
@@ -18,10 +18,12 @@ oauth2_scheme = OAuth2AuthorizationCodeBearer(
     scopes={"repo": "Access repositories", "user:email": "Get user email"}
 )
 
+
 class Token(BaseModel):
     access_token: str
     token_type: str
     expires_in: int
+
 
 class GitHubUser(BaseModel):
     id: int
@@ -31,11 +33,13 @@ class GitHubUser(BaseModel):
     avatar_url: Optional[str] = None
     access_token: str
 
+
 class UserResponse(BaseModel):
     login: str
     name: Optional[str]
     email: Optional[str]
     avatar_url: Optional[str]
+
 
 # GitHub OAuth configuration
 GITHUB_CLIENT_ID = settings.GITHUB_CLIENT_ID
@@ -45,6 +49,7 @@ OAUTH2_REDIRECT_URI = settings.OAUTH2_REDIRECT_URI
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = settings.ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
 
 async def get_github_access_token(code: str) -> str:
     """Exchange GitHub OAuth code for access token"""
@@ -59,14 +64,15 @@ async def get_github_access_token(code: str) -> str:
                 "redirect_uri": OAUTH2_REDIRECT_URI
             }
         )
-        
+
         if response.status_code != 200:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Failed to get access token from GitHub"
             )
-        
+
         return response.json().get("access_token")
+
 
 async def get_github_user(access_token: str) -> GitHubUser:
     """Get GitHub user info using access token"""
@@ -78,13 +84,13 @@ async def get_github_user(access_token: str) -> GitHubUser:
                 "Accept": "application/json"
             }
         )
-        
+
         if response.status_code != 200:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Failed to get user info from GitHub"
             )
-        
+
         user_data = response.json()
         return GitHubUser(
             id=user_data.get("id"),
@@ -94,6 +100,7 @@ async def get_github_user(access_token: str) -> GitHubUser:
             avatar_url=user_data.get("avatar_url"),
             access_token=access_token
         )
+
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Create JWT token for authenticated user"""
@@ -106,18 +113,25 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+
 @router.get("/login")
 async def login_github():
     """Redirect to GitHub OAuth"""
-    return {
-        "url": f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&redirect_uri={OAUTH2_REDIRECT_URI}&scope=repo"
-    }
+    url = (
+        f"https://github.com/login/oauth/authorize"
+        f"?client_id={GITHUB_CLIENT_ID}"
+        f"&redirect_uri={OAUTH2_REDIRECT_URI}"
+        f"&scope=repo"
+    )
+    return {"url": url}
+
 
 @router.get("/callback")
 async def callback(code: str, db: Session = Depends(get_db)):
     try:
         if not code:
-            raise HTTPException(status_code=400, detail="Authorization code not provided")
+            raise HTTPException(status_code=400,
+                                detail="Authorization code not provided")
 
         # Exchange code for access token
         async with httpx.AsyncClient() as client:
@@ -132,8 +146,12 @@ async def callback(code: str, db: Session = Depends(get_db)):
                 headers={"Accept": "application/json"},
             )
 
-        if response.status_code != 200 or "access_token" not in response.json():
-            raise HTTPException(status_code=400, detail="Failed to obtain access token from GitHub")
+        if (response.status_code != 200 or
+                "access_token" not in response.json()):
+            raise HTTPException(
+                status_code=400,
+                detail="Failed to obtain access token from GitHub"
+            )
 
         access_token = response.json()["access_token"]
 
@@ -148,7 +166,8 @@ async def callback(code: str, db: Session = Depends(get_db)):
             )
 
             if user_response.status_code != 200:
-                raise HTTPException(status_code=400, detail="Failed to fetch user data from GitHub")
+                raise HTTPException(status_code=400,
+                                    detail="Failed to fetch user data")
 
             user_data = user_response.json()
 
@@ -164,7 +183,8 @@ async def callback(code: str, db: Session = Depends(get_db)):
             email = None
             if email_response.status_code == 200:
                 emails = email_response.json()
-                primary_email = next((e["email"] for e in emails if e["primary"] and e["verified"]), None)
+                primary_email = next((e["email"] for e in emails
+                                      if e["primary"] and e["verified"]), None)
                 email = primary_email or user_data.get("email")
 
         # Create or update user in the database
@@ -178,7 +198,7 @@ async def callback(code: str, db: Session = Depends(get_db)):
             )
             db.add(user)
             db.commit()  # Commit the new user to the database
-            db.refresh(user)  # Refresh the user object to get the updated state
+            db.refresh(user)
         else:
             user.email = email
             user.avatar_url = user_data.get("avatar_url")
@@ -188,7 +208,9 @@ async def callback(code: str, db: Session = Depends(get_db)):
 
         # Generate JWT token for the frontend
         token_data = {"sub": user.login}
-        token = jwt.encode(token_data, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+        token = jwt.encode(token_data,
+                           settings.SECRET_KEY,
+                           algorithm=settings.ALGORITHM)
 
         return {
             "access_token": token,

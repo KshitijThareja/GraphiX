@@ -50,6 +50,7 @@ oauth2_scheme = OAuth2AuthorizationCodeBearer(
 app.include_router(auth.router)
 app.include_router(analysis.router)
 
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize application services"""
@@ -60,11 +61,13 @@ async def startup_event():
         logger.error(f"Failed to connect to database: {str(e)}")
         raise RuntimeError("Failed to connect to database")
 
+
 @app.on_event("shutdown")
 async def shutdown_event():
     """Clean up application resources"""
     engine.dispose()
     logger.info("❌ Database connection closed")
+
 
 @app.get("/")
 async def root():
@@ -74,6 +77,7 @@ async def root():
         "version": app.version,
         "environment": os.getenv("ENVIRONMENT", "development")
     }
+
 
 # Dependency for getting current user
 async def get_current_user(
@@ -87,13 +91,15 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM]
+        )
         username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
     except JWTError:
         raise credentials_exception
-    
+
     user = db.query(User).filter(User.login == username).first()
     if user is None:
         raise credentials_exception
@@ -106,5 +112,6 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8000,
         reload=True,
-        workers=1  # Keep single worker for development
+        workers=1,
+        timeout_keep_alive=120
     )
