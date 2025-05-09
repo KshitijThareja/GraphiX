@@ -11,12 +11,11 @@ import CallgraphVisualization from "@/components/callgraph-visualization"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/providers/auth-provider"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useCallgraph } from "@/context/CallgraphContext"
 
 export default function VisualizePage() {
-  const [repoUrl, setRepoUrl] = useState("")
+  const { repoUrl, setRepoUrl, callgraphData, setCallgraphData, metrics, setMetrics, clearCallgraphData } = useCallgraph()
   const [isLoading, setIsLoading] = useState(false)
-  const [callgraphData, setCallgraphData] = useState<any>(null)
-  const [metrics, setMetrics] = useState<any>(null)
   const [chatQuery, setChatQuery] = useState("")
   const [chatResponse, setChatResponse] = useState("")
   const [dataset, setDataset] = useState<any[]>([])
@@ -24,7 +23,11 @@ export default function VisualizePage() {
   const { toast } = useToast()
   const { isAuthenticated } = useAuth()
 
-  const handleAnalyze = async () => {
+  const MAX_RETRIES = 3
+  const REQUEST_TIMEOUT = 120000 // 2 minutes timeout
+  const RETRY_DELAY = 5000 // 5 seconds delay between retries
+
+  const handleAnalyze = async (retryCount = 0) => {
     if (!repoUrl) {
       toast({
         title: "Repository URL required",
@@ -35,10 +38,12 @@ export default function VisualizePage() {
     }
 
     setIsLoading(true)
-    setCallgraphData(null)
-    setMetrics(null)
+    clearCallgraphData()
 
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT)
+
       const response = await fetch(`/api/backend/analysis/callgraph`, {
         method: "POST",
         headers: {
@@ -47,8 +52,11 @@ export default function VisualizePage() {
         },
         body: JSON.stringify({
           repo_url: repoUrl
-        })
+        }),
+        signal: controller.signal
       })
+
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
         throw new Error(await response.text())
@@ -75,13 +83,30 @@ export default function VisualizePage() {
         title: "Repository analyzed",
         description: "Callgraph generated successfully",
       })
-    } catch (error) {
-      console.error("Analysis failed:", error)
-      toast({
-        title: "Analysis failed",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
-        variant: "destructive",
-      })
+    } catch (error: any) {
+      console.error("Analysis error:", error)
+
+      if (error.name === "AbortError") {
+        toast({
+          title: "Request timed out",
+          description: "The analysis is taking too long. This may be due to a large codebase. Please try again or analyze a smaller repository.",
+          variant: "destructive",
+        })
+      } else if (error.code === "ECONNRESET" && retryCount < MAX_RETRIES) {
+        toast({
+          title: "Connection reset",
+          description: `Retrying analysis (${retryCount + 1}/${MAX_RETRIES})...`,
+          variant: "default",
+        })
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY))
+        return handleAnalyze(retryCount + 1)
+      } else {
+        toast({
+          title: "Analysis failed",
+          description: error.message || "Unknown error occurred. Please try again.",
+          variant: "destructive",
+        })
+      }
     } finally {
       setIsLoading(false)
     }
@@ -98,6 +123,9 @@ export default function VisualizePage() {
     }
 
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT)
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/chat`, {
         method: "POST",
         headers: {
@@ -105,9 +133,13 @@ export default function VisualizePage() {
           "Authorization": `Bearer ${localStorage.getItem("token")}`
         },
         body: JSON.stringify({
-          query: chatQuery
-        })
+          query: chatQuery,
+          repo_url: repoUrl
+        }),
+        signal: controller.signal
       })
+
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
         throw new Error(await response.text())
@@ -115,38 +147,74 @@ export default function VisualizePage() {
 
       const data = await response.json()
       setChatResponse(data.response)
-    } catch (error) {
-      toast({
-        title: "Chat failed",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
-        variant: "destructive",
-      })
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        toast({
+          title: "Request timed out",
+          description: "The chat request took too long. Please try again.",
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Chat failed",
+          description: error.message || "Unknown error occurred",
+          variant: "destructive",
+        })
+      }
     }
   }
 
   const exportDataset = async () => {
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT)
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/dataset`, {
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("token")}`
-        }
+        },
+        signal: controller.signal
       })
+
+      clearTimeout(timeoutId)
+
       if (!response.ok) {
         throw new Error(await response.text())
       }
+
       const data = await response.json()
       setDataset(data.dataset)
-    } catch (error) {
-      toast({
-        title: "Dataset export failed",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
-        variant: "destructive",
-      })
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        toast({
+          title: "Request timed out",
+          description: "The dataset export took too long. Please try again.",
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Dataset export failed",
+          description: error.message || "Unknown error occurred",
+          variant: "destructive",
+        })
+      }
     }
   }
 
   const benchmark = async () => {
+    if (!repoUrl) {
+      toast({
+        title: "Repository URL required",
+        description: "Please analyze a repository first",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT)
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/benchmark`, {
         method: "POST",
         headers: {
@@ -155,19 +223,32 @@ export default function VisualizePage() {
         },
         body: JSON.stringify({
           repo_url: repoUrl
-        })
+        }),
+        signal: controller.signal
       })
+
+      clearTimeout(timeoutId)
+
       if (!response.ok) {
         throw new Error(await response.text())
       }
+
       const data = await response.json()
       setBenchmarkResult(data.runtime)
-    } catch (error) {
-      toast({
-        title: "Benchmark failed",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
-        variant: "destructive",
-      })
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        toast({
+          title: "Request timed out",
+          description: "The benchmark took too long. Please try again.",
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Benchmark failed",
+          description: error.message || "Unknown error occurred",
+          variant: "destructive",
+        })
+      }
     }
   }
 
@@ -200,16 +281,10 @@ export default function VisualizePage() {
                 />
                 <Button
                   type="submit"
-                  onClick={handleAnalyze}
+                  onClick={() => handleAnalyze(0)}
                   disabled={isLoading}
                 >
                   {isLoading ? "Analyzing..." : "Analyze"}
-                </Button>
-                <Button onClick={exportDataset} className="bg-green-500 text-white p-2 ml-2">
-                  Export Dataset
-                </Button>
-                <Button onClick={benchmark} className="bg-purple-500 text-white p-2 ml-2">
-                  Benchmark
                 </Button>
               </div>
             </div>
@@ -230,6 +305,14 @@ export default function VisualizePage() {
                 </div>
               )}
             </div>
+            <div className="flex gap-2 mt-4">
+              <Button onClick={exportDataset} className="bg-green-500 text-white">
+                Export Dataset
+              </Button>
+              <Button onClick={benchmark} className="bg-purple-500 text-white">
+                Benchmark
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -242,6 +325,9 @@ export default function VisualizePage() {
             <Skeleton className="h-24" />
             <Skeleton className="h-24" />
           </div>
+          <p className="text-center text-muted-foreground">
+            Analyzing large codebases may take a few minutes. Please wait...
+          </p>
         </div>
       ) : callgraphData ? (
         <Tabs defaultValue="visualization" className="w-full">

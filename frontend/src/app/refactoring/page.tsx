@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { RefreshCwIcon, AlertTriangleIcon, CheckCircleIcon, XCircleIcon } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { useSearchParams } from "next/navigation"
+import { useCallgraph } from "@/context/CallgraphContext"
 
 interface RefactoringItem {
   id: string
@@ -17,18 +17,18 @@ interface RefactoringItem {
   location: string
   before: string
   after: string
+  django_best_practice?: string // Add optional field for Django best practices
 }
 
 export default function RefactoringPage() {
+  const { repoUrl } = useCallgraph()
   const [selectedTab, setSelectedTab] = useState("all")
   const { toast } = useToast()
-  const searchParams = useSearchParams()
   const [refactoringSuggestions, setRefactoringSuggestions] = useState<RefactoringItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    const repo = searchParams.get("repo")
-    if (repo) {
+    if (repoUrl) {
       setIsLoading(true)
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/refactoring`, {
         method: "POST",
@@ -36,7 +36,7 @@ export default function RefactoringPage() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${localStorage.getItem("token")}`
         },
-        body: JSON.stringify({ repo_url: repo })
+        body: JSON.stringify({ repo_url: repoUrl })
       })
         .then(res => {
           if (!res.ok) throw new Error("Failed to fetch refactoring suggestions")
@@ -50,7 +50,7 @@ export default function RefactoringPage() {
         }))
         .finally(() => setIsLoading(false))
     }
-  }, [searchParams])
+  }, [repoUrl, toast])
 
   const handleApply = (id: string) => {
     toast({
@@ -73,6 +73,20 @@ export default function RefactoringPage() {
       ? refactoringSuggestions
       : refactoringSuggestions.filter((item) => item.severity === selectedTab)
 
+  if (!repoUrl) {
+    return (
+      <div className="container py-12">
+        <h1 className="text-3xl font-bold mb-6">Refactoring Suggestions</h1>
+        <Card>
+          <CardHeader>
+            <CardTitle>AI-Driven Refactoring</CardTitle>
+            <CardDescription>No repository selected. Please analyze a repository in the Visualize page first.</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    )
+  }
+
   if (isLoading) return <div>Loading...</div>
 
   return (
@@ -84,7 +98,9 @@ export default function RefactoringPage() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>AI-Driven Refactoring</CardTitle>
-              <CardDescription>Suggestions to improve your code quality based on callgraph analysis</CardDescription>
+              <CardDescription>
+                Suggestions to improve your code quality for: {repoUrl}
+              </CardDescription>
             </div>
             <Button onClick={handleApplyAll}>
               <RefreshCwIcon className="h-4 w-4 mr-2" />
@@ -175,6 +191,12 @@ export default function RefactoringPage() {
                           </pre>
                         </div>
                       </div>
+                      {suggestion.django_best_practice && suggestion.django_best_practice !== "N/A" && (
+                        <div className="mt-4">
+                          <h4 className="font-medium mb-2">Django Best Practice</h4>
+                          <p className="text-sm text-muted-foreground">{suggestion.django_best_practice}</p>
+                        </div>
+                      )}
                     </CardContent>
                     <CardFooter className="flex justify-end">
                       <Button onClick={() => handleApply(suggestion.id)}>Apply Refactoring</Button>

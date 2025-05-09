@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import Header from "@/components/header"
 import { AuthProvider } from "@/providers/auth-provider"
+import { CallgraphProvider } from "@/context/CallgraphContext"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -24,11 +25,13 @@ export default function RootLayout({
       <body className={inter.className}>
         <AuthProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            <CallgraphProvider>
             <div className="min-h-screen flex flex-col">
               <Header />
               <main className="flex-1">{children}</main>
             </div>
             <Toaster />
+            </CallgraphProvider>
           </ThemeProvider>
         </AuthProvider>
       </body>

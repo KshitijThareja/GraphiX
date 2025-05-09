@@ -11,8 +11,10 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { DownloadIcon, BarChart3Icon, DatabaseIcon, GitlabIcon as GitHubIcon } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/providers/auth-provider"
+import { useCallgraph } from "@/context/CallgraphContext"
 
 export default function ResearchPage() {
+  const { repoUrl, callgraphData } = useCallgraph()
   const [selectedLanguage, setSelectedLanguage] = useState("python")
   const [repoCount, setRepoCount] = useState("10")
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["complexity", "coupling", "cohesion"])
@@ -217,7 +219,7 @@ export default function ResearchPage() {
           <Card>
             <CardHeader>
               <CardTitle>Benchmark Against Baselines</CardTitle>
-              <CardDescription>Compare GraphiX performance to existing solutions like SonarQube</CardDescription>
+              <CardDescription>Compare GraphiX performance for: {repoUrl || "No repository selected"}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
@@ -263,6 +265,14 @@ export default function ResearchPage() {
             </CardContent>
             <CardFooter className="flex justify-end">
               <Button onClick={async () => {
+                if (!repoUrl) {
+                  toast({
+                    title: "No repository selected",
+                    description: "Please analyze a repository in the Visualize page first",
+                    variant: "destructive",
+                  })
+                  return
+                }
                 try {
                   const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/benchmark`, {
                     method: "POST",
@@ -270,7 +280,7 @@ export default function ResearchPage() {
                       "Content-Type": "application/json",
                       "Authorization": `Bearer ${localStorage.getItem("token")}`
                     },
-                    body: JSON.stringify({ repo_url: "https://github.com/psf/requests" }) // Default repo
+                    body: JSON.stringify({ repo_url: repoUrl })
                   })
                   if (!response.ok) throw new Error(await response.text())
                   const data = await response.json()
@@ -298,7 +308,7 @@ export default function ResearchPage() {
             <CardHeader>
               <CardTitle>Empirical Metrics Collection</CardTitle>
               <CardDescription>
-                Gather quantitative data for research on callgraph density, LLM accuracy, etc.
+                Gather quantitative data for: {repoUrl || "No repository selected"}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -306,7 +316,15 @@ export default function ResearchPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="repoList">Repository List</Label>
-                    <Input id="repoList" placeholder="Enter GitHub repository URLs (one per line)" className="h-32" />
+                    <Input 
+                      id="repoList" 
+                      placeholder="Enter GitHub repository URLs (one per line)" 
+                      className="h-32" 
+                      value={repoUrl ? repoUrl : ""}
+                      onChange={(e) => {
+                        // Allow manual input if needed, but prefill with repoUrl
+                      }}
+                    />
                   </div>
 
                   <div className="space-y-4">
@@ -334,6 +352,14 @@ export default function ResearchPage() {
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
               <Button onClick={async () => {
+                if (!repoUrl) {
+                  toast({
+                    title: "No repository selected",
+                    description: "Please analyze a repository in the Visualize page first",
+                    variant: "destructive",
+                  })
+                  return
+                }
                 try {
                   const repoList = (document.getElementById("repoList") as HTMLInputElement).value.split("\n")
                   const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/dataset`, {

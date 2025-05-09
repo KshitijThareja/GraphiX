@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,7 @@ import { GitlabIcon as GitHubLogoIcon, FolderIcon, BarChart3Icon, MessageSquareI
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/providers/auth-provider"
+import { useCallgraph } from "@/context/CallgraphContext"
 
 interface Repository {
   id: number
@@ -17,7 +18,6 @@ interface Repository {
   description: string
   url: string
   stars: number
-  lastAnalyzed?: string
 }
 
 export default function RepositoriesPage() {
@@ -26,6 +26,7 @@ export default function RepositoriesPage() {
   const [repositories, setRepositories] = useState<Repository[]>([])
   const { toast } = useToast()
   const { isAuthenticated } = useAuth()
+  const { setRepoUrl } = useCallgraph()
 
   const handleSearch = async () => {
     if (!searchQuery) {
@@ -37,18 +38,31 @@ export default function RepositoriesPage() {
       return
     }
 
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in with GitHub to search repositories",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
 
     try {
-      const response = await fetch(`https://api.github.com/search/repositories?q=${searchQuery}&per_page=10`, {
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
-          "Accept": "application/vnd.github.v3+json"
-        }
-      })
+      const token = localStorage.getItem("token")
+      if (!token) {
+        throw new Error("No authentication token found. Please log in again.")
+      }
+
+      const response = await fetch(`https://api.github.com/search/repositories?q=${encodeURIComponent(searchQuery)}&per_page=10`)
 
       if (!response.ok) {
-        throw new Error(await response.text())
+        const errorText = await response.text()
+        if (response.status === 403) {
+          throw new Error("GitHub API rate limit exceeded. Please try again later or authenticate with a higher rate limit.")
+        }
+        throw new Error(`GitHub API error: ${errorText}`)
       }
 
       const data = await response.json()
@@ -58,7 +72,6 @@ export default function RepositoriesPage() {
         description: item.description || "No description",
         url: item.html_url,
         stars: item.stargazers_count,
-        lastAnalyzed: item.updated_at
       }))
       setRepositories(repos)
 
@@ -67,6 +80,7 @@ export default function RepositoriesPage() {
         description: `Found ${repos.length} repositories matching "${searchQuery}"`,
       })
     } catch (error) {
+      console.error("Search error:", error)
       toast({
         title: "Search failed",
         description: error instanceof Error ? error.message : "Unknown error occurred",
@@ -81,6 +95,14 @@ export default function RepositoriesPage() {
     if (e.key === "Enter") {
       handleSearch()
     }
+  }
+
+  const handleSelectRepo = (url: string) => {
+    setRepoUrl(url)
+    toast({
+      title: "Repository selected",
+      description: `Selected repository: ${url}`,
+    })
   }
 
   return (
@@ -136,25 +158,22 @@ export default function RepositoriesPage() {
                     {repo.url}
                   </a>
                 </div>
-                {repo.lastAnalyzed && (
-                  <div className="mt-2 text-sm text-muted-foreground">Last analyzed: {new Date(repo.lastAnalyzed).toLocaleDateString()}</div>
-                )}
               </CardContent>
               <CardFooter className="flex gap-2">
-                <Button asChild variant="default" size="sm">
-                  <Link href={`/visualize?repo=${encodeURIComponent(repo.url)}`}>
+                <Button asChild variant="default" size="sm" onClick={() => handleSelectRepo(repo.url)}>
+                  <Link href={`/visualize`}>
                     <BarChart3Icon className="h-4 w-4 mr-2" />
                     Visualize
                   </Link>
                 </Button>
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/chat?repo=${encodeURIComponent(repo.url)}`}>
+                <Button asChild variant="outline" size="sm" onClick={() => handleSelectRepo(repo.url)}>
+                  <Link href={`/chat`}>
                     <MessageSquareIcon className="h-4 w-4 mr-2" />
                     Chat
                   </Link>
                 </Button>
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/documentation?repo=${encodeURIComponent(repo.url)}`}>
+                <Button asChild variant="outline" size="sm" onClick={() => handleSelectRepo(repo.url)}>
+                  <Link href={`/documentation`}>
                     <FileTextIcon className="h-4 w-4 mr-2" />
                     Docs
                   </Link>

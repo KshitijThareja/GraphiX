@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { SendIcon, BotIcon, UserIcon } from "lucide-react"
-import { useSearchParams } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
+import { useCallgraph } from "@/context/CallgraphContext"
 
 interface Message {
   role: "user" | "assistant"
@@ -18,6 +18,7 @@ interface Message {
 }
 
 export default function ChatPage() {
+  const { repoUrl } = useCallgraph()
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
@@ -28,7 +29,6 @@ export default function ChatPage() {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const searchParams = useSearchParams()
   const { toast } = useToast()
 
   const scrollToBottom = () => {
@@ -42,6 +42,15 @@ export default function ChatPage() {
   const handleSendMessage = async () => {
     if (!input.trim()) return
 
+    if (!repoUrl) {
+      toast({
+        title: "No repository selected",
+        description: "Please analyze a repository in the Visualize page or select one from the Repositories page",
+        variant: "destructive",
+      })
+      return
+    }
+
     const userMessage: Message = {
       role: "user",
       content: input,
@@ -53,14 +62,13 @@ export default function ChatPage() {
     setIsLoading(true)
 
     try {
-      const repo = searchParams.get("repo")
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${localStorage.getItem("token")}`
         },
-        body: JSON.stringify({ query: input + (repo ? ` about ${repo}` : "") })
+        body: JSON.stringify({ query: input, repo_url: repoUrl })
       })
 
       if (!response.ok) {
@@ -100,7 +108,9 @@ export default function ChatPage() {
       <Card className="h-[calc(100vh-200px)] flex flex-col">
         <CardHeader>
           <CardTitle>Repository Assistant</CardTitle>
-          <CardDescription>Ask questions about your codebase and get intelligent responses</CardDescription>
+          <CardDescription>
+            Ask questions about your codebase: {repoUrl || "No repository selected"}
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 overflow-hidden">
           <ScrollArea className="h-full pr-4">

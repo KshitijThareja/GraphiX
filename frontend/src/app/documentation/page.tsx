@@ -6,40 +6,48 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DownloadIcon, CopyIcon, CheckIcon } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import { useSearchParams } from "next/navigation"
+import { useCallgraph } from "@/context/CallgraphContext"
 
 export default function DocumentationPage() {
+  const { repoUrl } = useCallgraph()
   const [copied, setCopied] = useState(false)
   const { toast } = useToast()
-  const searchParams = useSearchParams()
   const [documentation, setDocumentation] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    const repo = searchParams.get("repo")
-    if (repo) {
+    console.log("DocumentationPage: repoUrl from context:", repoUrl)
+    if (repoUrl) {
       setIsLoading(true)
+      console.log("Fetching documentation for repo:", repoUrl)
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/documentation`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${localStorage.getItem("token")}`
         },
-        body: JSON.stringify({ repo_url: repo })
+        body: JSON.stringify({ repo_url: repoUrl })
       })
         .then(res => {
-          if (!res.ok) throw new Error("Failed to fetch documentation")
+          console.log("Fetch response status:", res.status)
+          if (!res.ok) throw new Error(`Failed to fetch documentation: ${res.statusText}`)
           return res.json()
         })
-        .then(data => setDocumentation(data.documentation))
-        .catch(err => toast({
-          title: "Error",
-          description: err.message,
-          variant: "destructive",
-        }))
+        .then(data => {
+          console.log("Documentation fetch successful:", data)
+          setDocumentation(data.documentation || "No documentation available.")
+        })
+        .catch(err => {
+          console.error("Documentation fetch error:", err)
+          toast({
+            title: "Error",
+            description: err.message,
+            variant: "destructive",
+          })
+        })
         .finally(() => setIsLoading(false))
     }
-  }, [searchParams])
+  }, [repoUrl, toast])
 
   const handleCopy = () => {
     navigator.clipboard.writeText(documentation)
@@ -65,6 +73,20 @@ export default function DocumentationPage() {
     })
   }
 
+  if (!repoUrl) {
+    return (
+      <div className="container py-12">
+        <h1 className="text-3xl font-bold mb-6">Automated Documentation</h1>
+        <Card>
+          <CardHeader>
+            <CardTitle>Repository Documentation</CardTitle>
+            <CardDescription>No repository selected. Please analyze a repository in the Visualize page first.</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    )
+  }
+
   if (isLoading) return <div>Loading...</div>
 
   return (
@@ -74,7 +96,9 @@ export default function DocumentationPage() {
       <Card>
         <CardHeader>
           <CardTitle>Repository Documentation</CardTitle>
-          <CardDescription>Automatically generated documentation for your codebase</CardDescription>
+          <CardDescription>
+            Automatically generated documentation for: {repoUrl}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="markdown" className="w-full">

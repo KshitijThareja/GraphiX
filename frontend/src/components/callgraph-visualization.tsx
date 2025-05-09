@@ -45,17 +45,17 @@ export default function CallgraphVisualization({ data, className }: CallgraphVis
         d3
           .forceLink(data.links as any)
           .id((d: any) => d.id)
-          .distance(100)
+          .distance(120) // Increased distance for better spacing
       )
-      .force("charge", d3.forceManyBody().strength(-300))
+      .force("charge", d3.forceManyBody().strength(-400)) // Increased repulsion to reduce overlap
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collide", d3.forceCollide().radius(60))
+      .force("collide", d3.forceCollide().radius(30)) // Increased collision radius to prevent overlap
 
     const color = d3.scaleOrdinal(d3.schemeCategory10)
     const sizeScale = d3
       .scaleLinear()
       .domain([0, d3.max(data.nodes, (d) => d.complexity) || 10])
-      .range([5, 20])
+      .range([12, 25]) // Increased min radius for better visibility
 
     const link = svg
       .append("g")
@@ -66,38 +66,49 @@ export default function CallgraphVisualization({ data, className }: CallgraphVis
       .join("line")
       .attr("stroke-width", 1)
 
-    const node = svg
+    const nodeGroup = svg
       .append("g")
-      .attr("stroke", "#fff")
-      .attr("stroke-width", 1.5)
-      .selectAll("circle")
+      .selectAll("g")
       .data(data.nodes)
-      .join("circle")
-      .attr("r", (d: any) => sizeScale(d.complexity))
-      .attr("fill", (d: any) => color(d.group.toString()))
+      .join("g")
       .call(drag(simulation) as any)
       .on("click", (event, d) => {
         setSelectedNode(d)
         event.stopPropagation()
       })
+      .on("mouseover", function (event, d) {
+        d3.select(this).select("circle").attr("stroke-width", 3) // Highlight on hover
+      })
+      .on("mouseout", function (event, d) {
+        d3.select(this).select("circle").attr("stroke-width", 1.5) // Remove highlight
+      })
 
-    const labels = svg
-      .append("g")
-      .selectAll("text")
-      .data(data.nodes)
-      .join("text")
+    const node = nodeGroup
+      .append("circle")
+      .attr("r", (d: any) => sizeScale(d.complexity))
+      .attr("fill", (d: any) => color(d.group.toString()))
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 1.5)
+
+    const labels = nodeGroup
+      .append("text")
       .attr("text-anchor", "middle")
-      .attr("dy", ".35em")
-      .attr("font-size", "10px")
+      .attr("dy", (d: any) => sizeScale(d.complexity) + 15) // Offset below the node
+      .attr("font-size", "12px") // Increased font size for readability
+      .attr("fill", "#333")
       .text((d: any) => {
         const parts = d.id.split(".")
-        return parts[parts.length - 1]
+        const name = parts[parts.length - 1]
+        // Truncate long names (e.g., > 15 characters) with ellipsis
+        return name.length > 15 ? name.substring(0, 12) + "..." : name
       })
-      .attr("pointer-events", "none")
 
-    node.append("title").text((d: any) => 
-      `${d.id}\nType: ${d.type}\nComplexity: ${d.complexity}\nFile: ${d.file}`
-    )
+    // Add tooltips with full information
+    nodeGroup
+      .append("title")
+      .text((d: any) => 
+        `${d.id}\nType: ${d.type}\nComplexity: ${d.complexity}\nFile: ${d.file}`
+      )
 
     simulation.on("tick", () => {
       link
@@ -106,9 +117,7 @@ export default function CallgraphVisualization({ data, className }: CallgraphVis
         .attr("x2", (d: any) => d.target.x)
         .attr("y2", (d: any) => d.target.y)
 
-      node.attr("cx", (d: any) => d.x).attr("cy", (d: any) => d.y)
-
-      labels.attr("x", (d: any) => d.x).attr("y", (d: any) => d.y)
+      nodeGroup.attr("transform", (d: any) => `translate(${d.x},${d.y})`)
     })
 
     const zoom = d3
@@ -138,7 +147,7 @@ export default function CallgraphVisualization({ data, className }: CallgraphVis
       simulation.stop()
       window.removeEventListener("resize", handleResize)
     }
-  }, [data])
+  }, [data, selectedNode])
 
   function drag(simulation: any) {
     function dragstarted(event: any, d: any) {
