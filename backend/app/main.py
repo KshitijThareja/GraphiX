@@ -9,51 +9,35 @@ from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from .models.user import User
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Create database tables
 Base.metadata.create_all(bind=engine)
-
 app = FastAPI(
     title="GraphiX API",
     description="GitHub Codebase Evaluation Tool with Callgraphs and LLMs",
     version="0.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    openapi_url="/openapi.json",
 )
-
-# CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "*"
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# OAuth2 Scheme
 oauth2_scheme = OAuth2AuthorizationCodeBearer(
     authorizationUrl=f"{settings.GITHUB_CLIENT_ID}",
     tokenUrl="token",
-    scopes={
-        "repo": "Access repositories",
-        "user:email": "Get user email"
-    }
+    scopes={"repo": "Access repositories", "user:email": "Get user email"},
 )
-
-# Include routers
 app.include_router(auth.router)
 app.include_router(analysis.router)
 
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize application services"""
     try:
         engine.connect()
         logger.info("✅ Database connection established")
@@ -64,27 +48,22 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Clean up application resources"""
     engine.dispose()
     logger.info("❌ Database connection closed")
 
 
 @app.get("/")
 async def root():
-    """Health check endpoint"""
     return {
         "message": "GraphiX API is running",
         "version": app.version,
-        "environment": os.getenv("ENVIRONMENT", "development")
+        "environment": os.getenv("ENVIRONMENT", "development"),
     }
 
 
-# Dependency for getting current user
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
 ):
-    """Dependency to get current authenticated user"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -92,26 +71,25 @@ async def get_current_user(
     )
     try:
         payload = jwt.decode(
-            token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM]
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         username: str = payload.get("sub")
     except JWTError:
         raise credentials_exception
-
     user = db.query(User).filter(User.login == username).first()
     if user is None:
         raise credentials_exception
     return user
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
         port=8000,
         reload=True,
         workers=1,
-        timeout_keep_alive=120
+        timeout_keep_alive=120,
     )
