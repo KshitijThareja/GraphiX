@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import uuid
 from fastapi import (
     APIRouter,
     Depends,
@@ -150,22 +151,107 @@ async def generate_callgraph(
     request_model: AnalyzeRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    background_tasks: BackgroundTasks = None,
 ):
-    if not flash_model or not pro_model:
-        error_detail = "Gemini API is not properly configured"
-        logger.error(f"/callgraph endpoint error: {error_detail}")
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                "status": "error",
-                "message": error_detail,
-                "data": None,
-                "status_log": [],
-            },
-        )
-    status_log = []
-    generator = None
     try:
+        start_time = time.time()
+        repo_url = str(request_model.repo_url)
+        is_remote = not os.path.exists(repo_url)
+        repository_id = repo_url.split("/")[-1] if "/" in repo_url else repo_url
+        
+        # Determine the type of generator to use
+        if request_model.research_grade:
+            logger.info(f"Using research-grade callgraph generator for {repo_url}")
+            generator = ResearchCallgraphGenerator(framework=request_model.framework_hint)
+        elif request_model.advanced_analysis or request_model.advancedAnalysis:
+            logger.info(f"Using enhanced callgraph generator for {repo_url}")
+            generator = EnhancedCallgraphGenerator()
+        else:
+            logger.info(f"Using standard callgraph generator for {repo_url}")
+            generator = CallgraphGenerator()
+
+        # Generate callgraph
+        callgraph = await generator.analyze_repository(
+            repo_path=repo_url, timeout=600, clone=is_remote
+        )
+
+        # Store the result in the database
+        result = AnalysisResult(
+            repo_url=repo_url,
+            callgraph=callgraph,
+            runtime=time.time() - start_time,
+        )
+        db.add(result)
+        db.commit()
+        
+        # Store in chat service cache for future sessions
+        from ..routers.chat import callgraph_cache
+        callgraph_id = str(result.id) if result.id else str(time.time())
+        callgraph_cache[callgraph_id] = callgraph
+        callgraph_cache[repo_url] = callgraph
+        
+        # Auto-generate documentation (this needs to happen in the same request to ensure
+        # the documentation is available immediately after callgraph generation)
+        from ..services.documentation_service import DocumentationService
+        from ..routers.documentation import documentation_store
+        
+        # Create documentation ID
+        documentation_id = str(uuid.uuid4())
+        
+        # Store initial response in documentation store
+        documentation_store[documentation_id] = {
+            "documentation_id": documentation_id,
+            "repository_id": repository_id,
+            "status": "processing",
+            "generated_at": datetime.now().isoformat(),
+            "modules_count": 0,
+            "classes_count": 0,
+            "functions_count": 0
+        }
+        
+        # Create documentation service and analyze asynchronously
+        documentation_service = DocumentationService(framework_hint=request_model.framework_hint)
+        
+        # Add documentation generation to background tasks if available
+        if background_tasks:
+            logger.info(f"Scheduling documentation generation for {repo_url}")
+            background_tasks.add_task(
+                _generate_documentation_background,
+                documentation_id,
+                repository_id,
+                repo_url,
+                is_remote,
+                callgraph,
+                request_model.framework_hint
+            )
+        else:
+            # If no background_tasks available, start a task directly
+            logger.info(f"Starting documentation generation for {repo_url}")
+            asyncio.create_task(
+                _generate_documentation_background(
+                    documentation_id,
+                    repository_id,
+                    repo_url,
+                    is_remote,
+                    callgraph,
+                    request_model.framework_hint
+                )
+            )
+        
+        # Rest of the function remains the same
+        status_log = []
+        if not flash_model or not pro_model:
+            error_detail = "Gemini API is not properly configured"
+            logger.error(f"/callgraph endpoint error: {error_detail}")
+            return JSONResponse(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                content={
+                    "status": "error",
+                    "message": error_detail,
+                    "data": None,
+                    "status_log": status_log,
+                },
+            )
         advanced_analysis = (
             request_model.advanced_analysis or request_model.advancedAnalysis
         )
@@ -174,7 +260,6 @@ async def generate_callgraph(
         framework_hint = request_model.framework_hint
         status_log.append(f"Received request for {request_model.repo_url}")
         if research_grade:
-            generator = ResearchCallgraphGenerator(framework=framework_hint)
             status_log.append(
                 f"Initializing research-grade analysis with hint: {framework_hint}"
             )
@@ -182,24 +267,14 @@ async def generate_callgraph(
                 f"Using research-grade generator (actual context sensitivity determined by builder)"
             )
         elif advanced_analysis:
-            generator = EnhancedCallgraphGenerator()
             status_log.append("Initializing enhanced analysis.")
         else:
-            generator = CallgraphGenerator()
             status_log.append("Initializing standard analysis.")
             logger.info(
                 f"Using standard callgraph generator for {request_model.repo_url}"
             )
-        repo_url = str(request_model.repo_url)
-        is_remote = any(
-            repo_url.startswith(prefix) for prefix in ("http://", "https://", "git@")
-        )
         start_time = time.time()
         status_log.append("Starting repository analysis...")
-        callgraph = await generator.analyze_repository(
-            repo_path=repo_url, timeout=600, clone=is_remote
-        )
-        status_log.append("Repository analysis finished.")
         endpoint_runtime = time.time() - start_time
         if not callgraph.get("metadata"):
             callgraph["metadata"] = {}
@@ -418,32 +493,157 @@ async def chat_with_llm(
         )
 
 
+async def _generate_documentation_background(
+    documentation_id: str,
+    repository_id: str,
+    repo_url: str,
+    is_remote: bool,
+    callgraph: dict = None,
+    framework_hint: str = "generic"
+):
+    """
+    Background task to generate documentation based on callgraph data.
+    This function should be called either as a background task or as a new task.
+    """
+    from ..routers.documentation import documentation_store
+    from ..services.documentation_service import DocumentationService
+    
+    try:
+        logger.info(f"Starting documentation generation for {repo_url}")
+        documentation_service = DocumentationService(framework_hint=framework_hint)
+        
+        # Use the callgraph data if provided, otherwise analyze the repository
+        if callgraph:
+            logger.info("Using existing callgraph data for documentation")
+            # Extract documentation from callgraph
+            doc_result = await documentation_service.generate_from_callgraph(
+                repo_path=repo_url if not is_remote else None,
+                callgraph_result=callgraph,
+                clone=is_remote
+            )
+        else:
+            # Clone and analyze repository if callgraph not provided
+            logger.info("Analyzing repository for documentation")
+            doc_result = await documentation_service.analyze_repository(
+                repo_path=repo_url,
+                timeout=600,
+                clone=is_remote
+            )
+        
+        # Count the elements by type
+        modules_count = len(doc_result.get("modules", []))
+        classes_count = len(doc_result.get("classes", []))
+        functions_count = len(doc_result.get("functions", []))
+        
+        # Update documentation store with results
+        if documentation_id in documentation_store:
+            documentation_store[documentation_id].update({
+                "status": "completed",
+                "documentation": doc_result,
+                "modules_count": modules_count,
+                "classes_count": classes_count,
+                "functions_count": functions_count,
+                "repository_url": repo_url,
+                "repository_id": repository_id,  # Make sure repository_id is included
+                "framework": framework_hint,
+                "completed_at": datetime.now().isoformat()
+            })
+            
+            # Generate markdown documentation
+            try:
+                markdown_doc = await documentation_service.generate_markdown_documentation(doc_result)
+                documentation_store[documentation_id]["markdown_files"] = {"README.md": markdown_doc}
+                
+                # Add a summary for frontend display
+                modules_count = len(doc_result.get("modules", []))
+                classes_count = len(doc_result.get("classes", []))
+                functions_count = len(doc_result.get("functions", []))
+                
+                documentation_store[documentation_id]["summary"] = {
+                    "modules": modules_count,
+                    "classes": classes_count,
+                    "functions": functions_count,
+                    "framework": callgraph.get("metadata", {}).get("framework_analyzed_as", framework_hint)
+                }
+                
+                # Ensure the documentation is marked as available
+                documentation_store[documentation_id]["has_documentation"] = True
+            except Exception as e:
+                logger.error(f"Error generating markdown documentation: {str(e)}")
+                documentation_store[documentation_id]["markdown_files"] = {"README.md": f"# Documentation Generation Error\n\nThere was an error generating detailed documentation: {str(e)}\n\nHowever, basic documentation data is available."}
+                documentation_store[documentation_id]["has_documentation"] = True
+            
+            logger.info(f"Documentation generation completed for {repo_url}")
+        else:
+            logger.warning(f"Documentation ID {documentation_id} not found in store")
+    
+    except Exception as e:
+        logger.error(f"Error generating documentation: {str(e)}\n{traceback.format_exc()}")
+        if documentation_id in documentation_store:
+            documentation_store[documentation_id].update({
+                "status": "failed",
+                "error": str(e)
+            })
+
+
 @router.post("/documentation")
 async def generate_documentation(
-    request: AnalyzeRequest, current_user: User = Depends(get_current_user)
+    request: AnalyzeRequest, 
+    current_user: User = Depends(get_current_user),
+    background_tasks: BackgroundTasks = None
 ):
     try:
-        generator = CallgraphGenerator()
-        repo_path = await generator.clone_repository(
-            str(request.repo_url), current_user.access_token
-        )
-        callgraph = await generator.analyze_repository(repo_path)
-        await generator.cleanup()
-        doc = "This repository contains a codebase analyzed with GraphiX.\n\n"
-        for node in callgraph["nodes"]:
-            doc += f"Function: {node['id']}\n"
-            doc += f"**Description**: {node['metadata'].get('docstring', 'No description available.')}\n"
-            doc += "**Parameters**: None\n"
-            doc += "**Returns**: None\n"
-            doc += f"**Complexity**: {node['complexity']}\n\n"
-        doc += "\n"
-        doc += f"Total Functions: {len(callgraph['nodes'])}\n"
-        doc += f"Total Function Calls: {len(callgraph['links'])}\n"
-        for node in callgraph["nodes"]:
-            if node["complexity"] > 7:
-                doc += f"- The {node['id']} function has high complexity ({node['complexity']}). Consider refactoring.\n"
-        return {"documentation": doc}
+        repo_url = str(request.repo_url)
+        repository_id = repo_url.split("/")[-1] if "/" in repo_url else repo_url
+        is_remote = not os.path.exists(repo_url)
+        
+        # Create documentation ID
+        documentation_id = str(uuid.uuid4())
+        
+        # Store initial response in documentation store
+        from ..routers.documentation import documentation_store
+        documentation_store[documentation_id] = {
+            "documentation_id": documentation_id,
+            "repository_id": repository_id,
+            "status": "processing",
+            "generated_at": datetime.now().isoformat(),
+            "modules_count": 0,
+            "classes_count": 0,
+            "functions_count": 0
+        }
+        
+        # Start documentation generation in background
+        if background_tasks:
+            background_tasks.add_task(
+                _generate_documentation_background,
+                documentation_id,
+                repository_id,
+                repo_url,
+                is_remote,
+                None,  # No callgraph, will generate as needed
+                request.framework_hint
+            )
+        else:
+            # If no background_tasks available, start a task directly
+            asyncio.create_task(
+                _generate_documentation_background(
+                    documentation_id,
+                    repository_id,
+                    repo_url,
+                    is_remote,
+                    None,  # No callgraph, will generate as needed
+                    request.framework_hint
+                )
+            )
+        
+        return {
+            "documentation_id": documentation_id,
+            "repository_id": repository_id,
+            "status": "processing",
+            "message": "Documentation generation started"
+        }
     except Exception as e:
+        logger.error(f"Error initiating documentation generation: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate documentation: {str(e)}",

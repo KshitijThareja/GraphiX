@@ -1,10 +1,11 @@
 import os
 import ast
-from typing import Dict, List, Set, Optional
+from typing import Dict, List, Set, Optional, Any, Union
 import tempfile
 import shutil
 from git import Repo
 from fastapi import HTTPException
+from pydantic import AnyUrl
 import google.generativeai as genai
 import logging
 import traceback
@@ -12,7 +13,11 @@ import time
 import asyncio
 from functools import wraps
 from datetime import datetime, timedelta
+import json
+
 from ..models.base import settings
+from ..models.callgraph import CallgraphDataCreate
+from .codebase_data_service import CodebaseDataService
 
 
 def rate_limited(max_per_minute: int):
@@ -49,268 +54,317 @@ class CallgraphGenerator:
         self.complexity_scores = {}
         self.repo_path = ""
         self.detected_framework_name = "generic"
+        self.analysis_start_time = None
+        self.codebase_data_service = CodebaseDataService()
+        self.repository_id = None
+        self.callgraph_id = None
+        self.metrics = {}
+        self.status_log = []
+        
+        # Initialize Gemini for AI-enhanced analysis
         GEMINI_API_KEY = settings.GEMINI_API_KEY
         genai.configure(api_key=GEMINI_API_KEY)
         self.model = genai.GenerativeModel("gemini-2.0-flash-lite")
         self.last_api_call = 0
         self.min_interval = 2.0
 
-    async def clone_repository(
-        self, repo_url: str, access_token: Optional[str] = None, timeout: int = 300
-    ) -> str:
-        repo_name = os.path.splitext(os.path.basename(repo_url.rstrip("/")))[0]
-        temp_dir = tempfile.mkdtemp(prefix=f"graphix_{repo_name}_")
-        logger.info(
-            f"Cloning repository {repo_url} to {temp_dir} (timeout: {timeout}s)"
-        )
+    def is_valid_url(self, url: str) -> bool:
+        """
+        Check if a URL is valid for Git cloning.
+        
+        Args:
+            url: The URL to check
+            
+        Returns:
+            bool: True if the URL appears to be a valid Git repository URL
+        """
+        # Simple check for common Git URL patterns
+        if url.startswith(("http://", "https://", "git@", "ssh://", "git://")):
+            # Check for common Git hosting domains or .git suffix
+            if (
+                ".git" in url or
+                "github.com" in url or
+                "gitlab.com" in url or
+                "bitbucket.org" in url or
+                "dev.azure.com" in url or
+                "git.sr.ht" in url
+            ):
+                return True
+        return False
 
-        async def _clone_repo():
-            try:
-                repo_url_clean = repo_url.strip()
-                if repo_url_clean.endswith(".git"):
-                    repo_url_clean = repo_url_clean[:-4]
-                if access_token:
-                    if repo_url_clean.startswith("https://"):
-                        auth_url = repo_url_clean.replace(
-                            "https://", f"https://{access_token}@", 1
-                        )
-                    elif repo_url_clean.startswith("http://"):
-                        auth_url = repo_url_clean.replace(
-                            "http://", f"http://{access_token}@", 1
-                        )
-                    else:
-                        auth_url = f"https://{access_token}@{repo_url_clean}"
-                    logger.debug(
-                        f"Using authenticated URL: {auth_url.split('@')[0]}@[REDACTED]"
-                    )
-                    cmd = [
-                        "git",
-                        "clone",
-                        "--progress",
-                        "--depth",
-                        "1",
-                        auth_url,
-                        temp_dir,
-                    ]
-                    process = await asyncio.create_subprocess_exec(
-                        *cmd,
-                        stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE,
-                    )
-                    while True:
-                        output = await process.stderr.readline()
-                        if process.returncode is not None:
-                            break
-                        if output:
-                            line = output.decode().strip()
-                            logger.debug(f"git clone: {line}")
-                    await process.wait()
-                    if process.returncode != 0:
-                        error_output = await process.stderr.read()
-                        raise Exception(
-                            f"Git clone failed: {error_output.decode().strip()}"
-                        )
-                else:
-                    cmd = [
-                        "git",
-                        "clone",
-                        "--progress",
-                        "--depth",
-                        "1",
-                        repo_url_clean,
-                        temp_dir,
-                    ]
-                    process = await asyncio.create_subprocess_exec(
-                        *cmd,
-                        stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE,
-                    )
-                    while True:
-                        output = await process.stderr.readline()
-                        if process.returncode is not None:
-                            break
-                        if output:
-                            line = output.decode().strip()
-                            logger.debug(f"git clone: {line}")
-                    await process.wait()
-                    if process.returncode != 0:
-                        error_output = await process.stderr.read()
-                        raise Exception(
-                            f"Git clone failed: {error_output.decode().strip()}"
-                        )
-                if not os.path.exists(os.path.join(temp_dir, ".git")):
-                    raise Exception("Repository was not cloned successfully")
-                return temp_dir
-            except Exception as e:
-                logger.error(f"Error in clone operation: {str(e)}")
-                raise
+    async def clone_repository(
+        self, repo_url: Union[str, AnyUrl], timeout: int = 180
+    ) -> str:
+        """Clone a git repository to a temporary directory."""
+        repo_url_str = str(repo_url)  # Convert HttpUrl to string immediately
+
+        if not self.is_valid_url(repo_url_str):
+            if os.path.isdir(repo_url_str):
+                self.status_log.append(f"Using local directory: {repo_url_str}")
+                logger.info(f"Using local directory: {repo_url_str}")
+                return os.path.abspath(repo_url_str)
+            else:
+                self.status_log.append(f"Invalid repository URL or path: {repo_url_str}")
+                logger.error(f"Invalid repository URL or path: {repo_url_str}")
+                raise ValueError(f"Invalid repository URL or path: {repo_url_str}")
+
+        # Use repo_url_str for all path operations
+        base_name = os.path.basename(repo_url_str.rstrip("/"))
+        repo_name_sanitized = os.path.splitext(base_name)[0]
+        safe_repo_name = "".join(c if c.isalnum() or c in ('_', '-') else '' for c in repo_name_sanitized)
+        if not safe_repo_name:
+            safe_repo_name = "repository"
+
+        temp_dir_name = f"graphix_{safe_repo_name}_{os.urandom(4).hex()}"
+        temp_dir = os.path.join(tempfile.gettempdir(), temp_dir_name)
 
         try:
-            clone_task = asyncio.create_task(_clone_repo())
-            done, pending = await asyncio.wait(
-                [clone_task], timeout=timeout, return_when=asyncio.FIRST_COMPLETED
+            self.status_log.append(
+                f"Cloning repository {repo_url_str} to {temp_dir} (timeout: {timeout}s)"
             )
-            if pending:
-                logger.warning(f"Clone operation timed out after {timeout} seconds")
-                for task in pending:
-                    task.cancel()
-                raise asyncio.TimeoutError(
-                    f"Clone operation timed out after {timeout} seconds"
-                )
-            temp_dir = await clone_task
-            self.repo_path = os.path.abspath(temp_dir)
-            logger.info(f"Successfully cloned repository to {self.repo_path}")
-            return self.repo_path
-        except asyncio.TimeoutError as e:
-            logger.error(f"Repository clone timed out after {timeout} seconds")
-            raise HTTPException(
-                status_code=408,
-                detail=f"Repository clone timed out after {timeout} seconds. The repository might be too large or the connection is slow.",
+            logger.info(
+                f"Cloning repository {repo_url_str} to {temp_dir} (timeout: {timeout}s)"
             )
-        except Exception as e:
-            error_msg = str(e)
-            logger.error(
-                f"Failed to clone repository: {error_msg}\n{traceback.format_exc()}"
-            )
-            if os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir, ignore_errors=True)
-            if any(msg in error_msg.lower() for msg in ["not found", "does not exist"]):
-                error_msg = "Repository not found. Please check the URL and try again."
-            elif any(
-                msg in error_msg.lower() for msg in ["auth", "permission", "access"]
-            ):
-                error_msg = "Authentication failed. Please check your access token and try again."
-            elif "timed out" in error_msg.lower():
-                error_msg = f"Connection timed out. The repository might be too large or the connection is slow."
-            raise HTTPException(status_code=400, detail=error_msg)
+            os.makedirs(os.path.dirname(temp_dir), exist_ok=True)
 
-    @rate_limited(max_per_minute=25)
+            cmd = [
+                "git",
+                "clone",
+                "--depth",
+                "1",
+                repo_url_str,  # Use string form for command
+                temp_dir,
+            ]
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            while True:
+                output = await process.stderr.readline()
+                if process.returncode is not None:
+                    break
+                if output:
+                    line = output.decode().strip()
+                    logger.debug(f"git clone: {line}")
+            await process.wait()
+            if process.returncode != 0:
+                error_output = await process.stderr.read()
+                raise Exception(
+                    f"Git clone failed: {error_output.decode().strip()}"
+                )
+            if not os.path.exists(os.path.join(temp_dir, ".git")):
+                raise Exception("Repository was not cloned successfully")
+            return temp_dir
+        except Exception as e:
+            logger.error(f"Error in clone operation: {str(e)}")
+            raise
+
     async def analyze_repository(
         self,
-        repo_path: str,
-        timeout: int = 300,
-        clone: bool = False,
+        repo_path: Union[str, AnyUrl], 
+        timeout: int = 600,
+        clone: bool = True, 
         perform_cleanup: bool = True,
-    ) -> Dict[str, List]:
-        cleanup_needed = False
-        temp_dir = None
-        try:
-            start_time = time.time()
-            max_files = 25
-            if clone:
-                logger.info(f"Cloning repository from {repo_path}")
-                try:
-                    clone_timeout = min(180, timeout // 2)
-                    repo_path = await self.clone_repository(
-                        repo_path, timeout=clone_timeout
-                    )
-                    cleanup_needed = True
-                    temp_dir = repo_path
-                    logger.info(f"Repository cloned to {repo_path}")
-                except Exception as e:
-                    logger.error(f"Failed to clone repository: {str(e)}")
-                    raise
-            logger.info(f"Starting repository analysis in: {repo_path}")
-            repo_root = repo_path
-            while (
-                not os.path.exists(os.path.join(repo_root, ".git"))
-                and os.path.dirname(repo_root) != repo_root
-            ):
-                repo_root = os.path.dirname(repo_root)
-            logger.info(f"Using repository root: {repo_root}")
-            self.repo_path = repo_root
-            py_files = []
+        max_files_to_analyze: Optional[int] = None
+    ) -> Dict:
+        """Analyzes a software repository to generate a callgraph."""
+        start_time = time.time()
+        self.status_log.append("Starting repository analysis.")
+        repo_path_input_str = str(repo_path) # Convert original input for logging/initial checks
+
+        current_repo_physical_path = None
+
+        if clone:
+            self.status_log.append(f"Cloning repository from {repo_path_input_str}")
+            logger.info(f"Cloning repository from {repo_path_input_str}")
+            clone_timeout = timeout // 3
             try:
-                for root, dirs, files in os.walk(repo_root):
-                    dirs[:] = [
-                        d
-                        for d in dirs
-                        if not d.startswith((".", "_"))
-                        and d not in ("venv", "env", "node_modules", "__pycache__")
-                    ]
-                    for file in files:
-                        if file.endswith(".py"):
-                            full_path = os.path.join(root, file)
-                            try:
-                                if os.path.getsize(full_path) > 0:
-                                    py_files.append(full_path)
-                            except (IOError, OSError) as e:
-                                logger.warning(
-                                    f"Skipping unreadable file {full_path}: {str(e)}"
-                                )
-                                continue
+                # clone_repository now expects Union[str, AnyUrl] and handles str conversion internally
+                cloned_path = await self.clone_repository(repo_path, timeout=clone_timeout)
+                current_repo_physical_path = os.path.abspath(cloned_path)
+                self.tmp_dir = current_repo_physical_path 
+                self.cleanup_needed = True 
+                logger.info(f"Successfully cloned repository to {current_repo_physical_path}")
+                self.status_log.append(f"Repository cloned to {current_repo_physical_path}")
             except Exception as e:
-                logger.error(f"Error walking directory {repo_root}: {str(e)}")
+                logger.error(f"Failed to clone repository: {e}")
+                self.status_log.append(f"Failed to clone repository: {e}")
                 raise
-            if not py_files:
-                logger.warning(f"No Python files found in {repo_root}")
-                return {"nodes": [], "links": []}
-            logger.info(
-                f"Found {len(py_files)} Python files, analyzing up to {max_files}..."
-            )
-            processed_files = 0
-            for file_path in py_files[:max_files]:
-                if time.time() - start_time > timeout:
-                    logger.warning(f"Analysis timed out after {timeout} seconds")
-                    raise asyncio.TimeoutError(
-                        f"Analysis timed out after {timeout} seconds"
-                    )
-                try:
-                    await asyncio.sleep(0.1)
-                    self.analyze_file(file_path)
-                    processed_files += 1
-                    logger.info(
-                        f"Analyzed {file_path} ({processed_files}/{min(len(py_files), max_files)})"
-                    )
-                except Exception as e:
-                    logger.error(
-                        f"Error analyzing {file_path}: {str(e)}\n{traceback.format_exc()}"
-                    )
-            if not self.functions:
-                logger.warning("No functions found in any Python files")
-                return {"nodes": [], "links": []}
-            logger.info(
-                f"Analyzed {processed_files} Python files, generating callgraph..."
-            )
-            callgraph = await self.generate_callgraph()
-            if not callgraph.get("nodes") or not callgraph.get("links"):
-                logger.warning("Generated empty callgraph")
-            else:
-                logger.info(
-                    f"Generated callgraph with {len(callgraph.get('nodes', []))} nodes and {len(callgraph.get('links', []))} links"
-                )
-            analysis_time = time.time() - start_time
-            logger.info(f"Analysis completed in {analysis_time:.2f} seconds")
-            callgraph["metadata"] = {
-                "analysis_time_seconds": analysis_time,
-                "files_analyzed": processed_files,
-                "total_files_found": len(py_files),
-                "repository": os.path.basename(repo_root),
-                "framework_analyzed_as": self.detected_framework_name,
+        elif os.path.isdir(repo_path_input_str):
+            current_repo_physical_path = os.path.abspath(repo_path_input_str)
+            self.tmp_dir = None 
+            self.cleanup_needed = False 
+            logger.info(f"Using local repository path: {current_repo_physical_path}")
+            self.status_log.append(f"Using local repository path: {current_repo_physical_path}")
+        else:
+            msg = f"Invalid repository path or URL: {repo_path_input_str}"
+            logger.error(msg)
+            self.status_log.append(msg)
+            raise ValueError(msg)
+        
+        self.repo_path = current_repo_physical_path # This is the path to be used for analysis
+
+        self.status_log.append(f"Starting repository analysis in: {self.repo_path}")
+        logger.info(f"Starting repository analysis in: {self.repo_path}")
+
+        if not self.repo_path or not os.path.isdir(self.repo_path):
+            logger.error(f"Invalid repository path: {self.repo_path}")
+            raise ValueError(f"Invalid repository path: {self.repo_path}")
+
+        repo_root = self.repo_path
+        while (
+            not os.path.exists(os.path.join(repo_root, ".git"))
+            and os.path.dirname(repo_root) != repo_root
+        ):
+            repo_root = os.path.dirname(repo_root)
+        logger.info(f"Using repository root: {repo_root}")
+        self.repo_path = repo_root
+        self.repository_id = os.path.basename(repo_root)
+        
+        # Log repository analysis start
+        log_message = f"Starting repository analysis for {self.repository_id}"
+        logger.info(log_message)
+        self.status_log.append(log_message)
+        
+        # Check if we have existing callgraph data that we can reuse
+        existing_callgraph = await self.codebase_data_service.get_callgraph(self.repository_id)
+        if existing_callgraph:
+            logger.info(f"Found existing callgraph data for {self.repository_id}")
+            
+            # Convert nodes and links to the format expected by API consumers
+            result = {
+                "nodes": [node.dict() for node in existing_callgraph.nodes],
+                "links": [link.dict() for link in existing_callgraph.links],
+                "metadata": existing_callgraph.metadata.dict()
             }
-            return callgraph
-        except asyncio.TimeoutError:
-            logger.warning(f"Analysis timed out after {timeout} seconds")
-            raise
-        except Exception as e:
-            logger.error(
-                f"Error in analyze_repository: {str(e)}\n{traceback.format_exc()}"
+            
+            if perform_cleanup and clone:
+                await self.cleanup()
+            
+            return result
+        py_files = []
+        total_files_found = 0
+        
+        for root, dirs, files in os.walk(repo_path):
+            # Skip virtual environment directories
+            if "venv" in dirs:
+                dirs.remove("venv")
+            if ".venv" in dirs:
+                dirs.remove(".venv")
+            if ".git" in dirs:
+                dirs.remove(".git")
+
+            total_files_found += len(files)
+            
+            for file in files:
+                if file.endswith(".py"):
+                    py_files.append(os.path.join(root, file))
+                    
+        log_message = f"Found {len(py_files)} Python files out of {total_files_found} total files"
+        logger.info(log_message)
+        self.status_log.append(log_message)
+        if not py_files:
+            logger.warning(f"No Python files found in {repo_root}")
+            return {"nodes": [], "links": []}
+        logger.info(
+            f"Found {len(py_files)} Python files, analyzing up to {max_files_to_analyze or len(py_files)}..."
+        )
+        processed_files = 0
+        for file_path in py_files:
+            if time.time() - start_time > timeout:
+                logger.warning(f"Analysis timed out after {timeout} seconds")
+                raise asyncio.TimeoutError(
+                    f"Analysis timed out after {timeout} seconds"
+                )
+            try:
+                await asyncio.sleep(0.1)
+                self.analyze_file(file_path)
+                processed_files += 1
+                logger.info(
+                    f"Analyzed {file_path} ({processed_files}/{min(len(py_files), max_files_to_analyze or len(py_files))})"
+                )
+            except Exception as e:
+                logger.error(
+                    f"Error analyzing {file_path}: {str(e)}\n{traceback.format_exc()}"
+                )
+        if not self.functions:
+            logger.warning("No functions found in any Python files")
+            return {"nodes": [], "links": []}
+        logger.info(
+            f"Analyzed {processed_files} Python files, generating callgraph..."
+        )
+        self.generate_callgraph()
+        self._detect_framework()
+        
+        # Calculate analysis time
+        analysis_time = time.time() - start_time
+        
+        # Prepare metadata
+        metadata = {
+            "framework_analyzed_as": self.detected_framework_name,
+            "files_analyzed": len(py_files),
+            "total_files_found": total_files_found,
+            "analysis_time_seconds": round(analysis_time, 2),
+            "timeout_seconds": timeout,
+            "status": "completed",
+            "status_log": self.status_log
+        }
+        
+        # Calculate metrics
+        if self.complexity_scores:
+            complexity_values = list(self.complexity_scores.values())
+            avg_complexity = sum(complexity_values) / len(complexity_values) if complexity_values else 0
+            most_complex_function = None
+            max_complexity = 0
+            
+            for func_name, complexity in self.complexity_scores.items():
+                if complexity > max_complexity:
+                    max_complexity = complexity
+                    most_complex_function = func_name
+                    
+            self.metrics = {
+                "avg_complexity": round(avg_complexity, 2),
+                "max_complexity": round(max_complexity, 2)
+            }
+            
+            if most_complex_function:
+                for node in self.nodes:
+                    if node.get("id") == most_complex_function:
+                        self.metrics["most_complex_function"] = node
+                        break
+                        
+            metadata["metrics"] = self.metrics
+
+        # Prepare result for API response
+        result = {
+            "nodes": self.nodes,
+            "links": self.links,
+            "metadata": metadata
+        }
+        
+        # Store callgraph data in the database
+        try:
+            callgraph_data = CallgraphDataCreate(
+                repository_id=self.repository_id,
+                nodes=self.nodes,
+                links=self.links,
+                metadata=metadata
             )
-            raise
-        finally:
-            if (
-                perform_cleanup
-                and cleanup_needed
-                and temp_dir
-                and os.path.exists(temp_dir)
-            ):
-                try:
-                    logger.info(f"Cleaning up temporary directory: {temp_dir}")
-                    shutil.rmtree(temp_dir, ignore_errors=True)
-                except Exception as e:
-                    logger.error(
-                        f"Error cleaning up temporary directory {temp_dir}: {str(e)}"
-                    )
+            
+            self.callgraph_id = await self.codebase_data_service.store_callgraph(callgraph_data)
+            logger.info(f"Stored callgraph data with ID: {self.callgraph_id}")
+            
+            # Add callgraph ID to result metadata
+            result["metadata"]["callgraph_id"] = self.callgraph_id
+        except Exception as e:
+            logger.error(f"Failed to store callgraph data: {str(e)}")
+            result["metadata"]["store_error"] = str(e)
+
+        if perform_cleanup and clone:
+            await self.cleanup()
+
+        return result
 
     def analyze_file(self, file_path: str) -> None:
         try:

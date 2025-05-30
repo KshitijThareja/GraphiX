@@ -4,7 +4,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2AuthorizationCodeBearer
 from .models.base import Base, engine, settings, get_db
-from .routers import auth, analysis
+from .routers import auth, analysis, documentation, chat
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from .models.user import User
@@ -34,6 +34,8 @@ oauth2_scheme = OAuth2AuthorizationCodeBearer(
 )
 app.include_router(auth.router)
 app.include_router(analysis.router)
+app.include_router(documentation.router)
+app.include_router(chat.router)
 
 
 @app.on_event("startup")
@@ -41,6 +43,21 @@ async def startup_event():
     try:
         engine.connect()
         logger.info("✅ Database connection established")
+        
+        # Initialize vector store directory if configured
+        if settings.VECTOR_STORE_DIR:
+            os.makedirs(settings.VECTOR_STORE_DIR, exist_ok=True)
+            logger.info(f"✅ Vector store directory initialized: {settings.VECTOR_STORE_DIR}")
+            
+        # Log LLM provider configuration
+        if settings.OPENAI_API_KEY:
+            logger.info("✅ OpenAI API key configured")
+        if settings.ANTHROPIC_API_KEY:
+            logger.info("✅ Anthropic API key configured")
+        if settings.GEMINI_API_KEY:
+            logger.info("✅ Gemini API key configured")
+            
+        logger.info(f"✅ Default LLM provider: {settings.DEFAULT_LLM_PROVIDER}")
     except Exception as e:
         logger.error(f"Failed to connect to database: {str(e)}")
         raise RuntimeError("Failed to connect to database")

@@ -1,5 +1,4 @@
 "use client"
-
 import type React from "react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -11,7 +10,6 @@ import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/providers/auth-provider"
 import { useCallgraph } from "@/context/CallgraphContext"
-
 interface Repository {
   id: number
   name: string
@@ -19,7 +17,6 @@ interface Repository {
   url: string
   stars: number
 }
-
 export default function RepositoriesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -27,7 +24,6 @@ export default function RepositoriesPage() {
   const { toast } = useToast()
   const { isAuthenticated } = useAuth()
   const { setRepoUrl } = useCallgraph()
-
   const handleSearch = async () => {
     if (!searchQuery) {
       toast({
@@ -37,7 +33,6 @@ export default function RepositoriesPage() {
       })
       return
     }
-
     if (!isAuthenticated) {
       toast({
         title: "Authentication required",
@@ -46,17 +41,13 @@ export default function RepositoriesPage() {
       })
       return
     }
-
     setIsLoading(true)
-
     try {
       const token = localStorage.getItem("token")
       if (!token) {
         throw new Error("No authentication token found. Please log in again.")
       }
-
-      const response = await fetch(`https://api.github.com/search/repositories?q=${encodeURIComponent(searchQuery)}&per_page=10`)
-
+      const response = await fetch(`https:
       if (!response.ok) {
         const errorText = await response.text()
         if (response.status === 403) {
@@ -64,7 +55,6 @@ export default function RepositoriesPage() {
         }
         throw new Error(`GitHub API error: ${errorText}`)
       }
-
       const data = await response.json()
       const repos = data.items.map((item: any) => ({
         id: item.id,
@@ -74,7 +64,6 @@ export default function RepositoriesPage() {
         stars: item.stargazers_count,
       }))
       setRepositories(repos)
-
       toast({
         title: "Repositories found",
         description: `Found ${repos.length} repositories matching "${searchQuery}"`,
@@ -90,13 +79,11 @@ export default function RepositoriesPage() {
       setIsLoading(false)
     }
   }
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       handleSearch()
     }
   }
-
   const handleSelectRepo = (url: string) => {
     setRepoUrl(url)
     toast({
@@ -104,11 +91,9 @@ export default function RepositoriesPage() {
       description: `Selected repository: ${url}`,
     })
   }
-
   return (
     <div className="container py-12">
       <h1 className="text-3xl font-bold mb-6">GitHub Repositories</h1>
-
       <Card className="mb-8">
         <CardHeader>
           <CardTitle>Search Repositories</CardTitle>
@@ -134,7 +119,6 @@ export default function RepositoriesPage() {
           </div>
         </CardContent>
       </Card>
-
       {repositories.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {repositories.map((repo) => (

@@ -1,112 +1,132 @@
-"use client"
-
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
-import { DownloadIcon, BarChart3Icon, DatabaseIcon, GitlabIcon as GitHubIcon } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
-import { useAuth } from "@/providers/auth-provider"
-import { useCallgraph } from "@/context/CallgraphContext"
-
+"use client";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DownloadIcon,
+  BarChart3Icon,
+  DatabaseIcon,
+  GitlabIcon as GitHubIcon,
+} from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/providers/auth-provider";
+import { useCallgraph } from "@/context/CallgraphContext";
 export default function ResearchPage() {
-  const { repoUrl, callgraphData } = useCallgraph()
-  const [selectedLanguage, setSelectedLanguage] = useState("python")
-  const [repoCount, setRepoCount] = useState("10")
-  const [selectedMetrics, setSelectedMetrics] = useState<string[]>(["complexity", "coupling", "cohesion"])
-  const { toast } = useToast()
-  const { isAuthenticated } = useAuth()
-
+  const { repoUrl, callgraphData } = useCallgraph();
+  const [selectedLanguage, setSelectedLanguage] = useState("python");
+  const [repoCount, setRepoCount] = useState("10");
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([
+    "complexity",
+    "coupling",
+    "cohesion",
+  ]);
+  const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
   const handleMetricChange = (metric: string) => {
     if (selectedMetrics.includes(metric)) {
-      setSelectedMetrics(selectedMetrics.filter((m) => m !== metric))
+      setSelectedMetrics(selectedMetrics.filter((m) => m !== metric));
     } else {
-      setSelectedMetrics([...selectedMetrics, metric])
+      setSelectedMetrics([...selectedMetrics, metric]);
     }
-  }
-
+  };
   const handleGenerateDataset = async () => {
     if (!isAuthenticated) {
       toast({
         title: "Authentication required",
         description: "Please log in to generate a dataset",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
-
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/dataset`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/analysis/dataset`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            language: selectedLanguage,
+            repo_count: parseInt(repoCount),
+            metrics: selectedMetrics,
+          }),
         },
-        body: JSON.stringify({
-          language: selectedLanguage,
-          repo_count: parseInt(repoCount),
-          metrics: selectedMetrics
-        })
-      })
-
+      );
       if (!response.ok) {
-        throw new Error(await response.text())
+        throw new Error(await response.text());
       }
-
-      const data = await response.json()
+      const data = await response.json();
       toast({
         title: "Dataset generated",
         description: `Generated dataset for ${repoCount} ${selectedLanguage} repositories`,
-      })
+      });
     } catch (error) {
       toast({
         title: "Dataset generation failed",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
+        description:
+          error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive",
-      })
+      });
     }
-  }
-
+  };
   const handleDownloadDataset = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/dataset`, {
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
-        }
-      })
-
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/analysis/dataset`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        },
+      );
       if (!response.ok) {
-        throw new Error(await response.text())
+        throw new Error(await response.text());
       }
-
-      const data = await response.json()
-      const blob = new Blob([JSON.stringify(data.dataset, null, 2)], { type: "application/json" })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = "dataset.json"
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      window.URL.revokeObjectURL(url)
-
+      const data = await response.json();
+      const blob = new Blob([JSON.stringify(data.dataset, null, 2)], {
+        type: "application/json",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "dataset.json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
       toast({
         title: "Dataset downloaded",
         description: "The research dataset has been downloaded as a JSON file",
-      })
+      });
     } catch (error) {
       toast({
         title: "Dataset download failed",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
+        description:
+          error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive",
-      })
+      });
     }
-  }
-
+  };
   const metrics = [
     { id: "complexity", label: "Cyclomatic Complexity" },
     { id: "coupling", label: "Coupling" },
@@ -116,24 +136,24 @@ export default function ResearchPage() {
     { id: "dependencies", label: "Dependencies" },
     { id: "callgraph_density", label: "Callgraph Density" },
     { id: "llm_accuracy", label: "LLM Analysis Accuracy" },
-  ]
-
+  ];
   return (
     <div className="container py-12">
       <h1 className="text-3xl font-bold mb-6">Research Features</h1>
-
       <Tabs defaultValue="dataset" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="dataset">Dataset Generation</TabsTrigger>
           <TabsTrigger value="benchmarking">Benchmarking</TabsTrigger>
           <TabsTrigger value="metrics">Empirical Metrics</TabsTrigger>
         </TabsList>
-
         <TabsContent value="dataset" className="mt-6">
           <Card>
             <CardHeader>
               <CardTitle>Generate Research Dataset</CardTitle>
-              <CardDescription>Create a dataset of callgraphs, code, and LLM outputs for research</CardDescription>
+              <CardDescription>
+                Create a dataset of callgraphs, code, and LLM outputs for
+                research
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-6">
@@ -141,7 +161,10 @@ export default function ResearchPage() {
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="language">Programming Language</Label>
-                      <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                      <Select
+                        value={selectedLanguage}
+                        onValueChange={setSelectedLanguage}
+                      >
                         <SelectTrigger id="language">
                           <SelectValue placeholder="Select language" />
                         </SelectTrigger>
@@ -153,7 +176,6 @@ export default function ResearchPage() {
                         </SelectContent>
                       </Select>
                     </div>
-
                     <div>
                       <Label htmlFor="repoCount">Number of Repositories</Label>
                       <Select value={repoCount} onValueChange={setRepoCount}>
@@ -169,16 +191,20 @@ export default function ResearchPage() {
                       </Select>
                     </div>
                   </div>
-
                   <div>
                     <Label className="mb-2 block">Metrics to Include</Label>
                     <div className="space-y-2">
                       {metrics.map((metric) => (
-                        <div key={metric.id} className="flex items-center space-x-2">
+                        <div
+                          key={metric.id}
+                          className="flex items-center space-x-2"
+                        >
                           <Checkbox
                             id={metric.id}
                             checked={selectedMetrics.includes(metric.id)}
-                            onCheckedChange={() => handleMetricChange(metric.id)}
+                            onCheckedChange={() =>
+                              handleMetricChange(metric.id)
+                            }
                           />
                           <Label htmlFor={metric.id}>{metric.label}</Label>
                         </div>
@@ -186,11 +212,11 @@ export default function ResearchPage() {
                     </div>
                   </div>
                 </div>
-
                 <div className="bg-muted p-4 rounded-lg">
                   <h4 className="font-medium mb-2">Dataset Preview</h4>
                   <p className="text-sm text-muted-foreground mb-2">
-                    This will generate a dataset with the following characteristics:
+                    This will generate a dataset with the following
+                    characteristics:
                   </p>
                   <ul className="text-sm space-y-1">
                     <li>• Language: {selectedLanguage}</li>
@@ -214,12 +240,14 @@ export default function ResearchPage() {
             </CardFooter>
           </Card>
         </TabsContent>
-
         <TabsContent value="benchmarking" className="mt-6">
           <Card>
             <CardHeader>
               <CardTitle>Benchmark Against Baselines</CardTitle>
-              <CardDescription>Compare GraphiX performance for: {repoUrl || "No repository selected"}</CardDescription>
+              <CardDescription>
+                Compare GraphiX performance for:{" "}
+                {repoUrl || "No repository selected"}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
@@ -238,7 +266,6 @@ export default function ResearchPage() {
                       </SelectContent>
                     </Select>
                   </div>
-
                   <div>
                     <Label htmlFor="metric">Comparison Metric</Label>
                     <Select defaultValue="runtime">
@@ -254,61 +281,70 @@ export default function ResearchPage() {
                     </Select>
                   </div>
                 </div>
-
                 <div className="bg-muted p-4 rounded-lg">
                   <h4 className="font-medium mb-2">Benchmark Results</h4>
                   <p className="text-sm text-muted-foreground">
-                    No benchmark has been run yet. Configure the parameters and click "Run Benchmark".
+                    No benchmark has been run yet. Configure the parameters and
+                    click "Run Benchmark".
                   </p>
                 </div>
               </div>
             </CardContent>
             <CardFooter className="flex justify-end">
-              <Button onClick={async () => {
-                if (!repoUrl) {
-                  toast({
-                    title: "No repository selected",
-                    description: "Please analyze a repository in the Visualize page first",
-                    variant: "destructive",
-                  })
-                  return
-                }
-                try {
-                  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/benchmark`, {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      "Authorization": `Bearer ${localStorage.getItem("token")}`
-                    },
-                    body: JSON.stringify({ repo_url: repoUrl })
-                  })
-                  if (!response.ok) throw new Error(await response.text())
-                  const data = await response.json()
-                  toast({
-                    title: "Benchmark completed",
-                    description: `Runtime: ${data.runtime} seconds`,
-                  })
-                } catch (error) {
-                  toast({
-                    title: "Benchmark failed",
-                    description: error instanceof Error ? error.message : "Unknown error",
-                    variant: "destructive",
-                  })
-                }
-              }}>
+              <Button
+                onClick={async () => {
+                  if (!repoUrl) {
+                    toast({
+                      title: "No repository selected",
+                      description:
+                        "Please analyze a repository in the Visualize page first",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  try {
+                    const response = await fetch(
+                      `${process.env.NEXT_PUBLIC_API_URL}/analysis/benchmark`,
+                      {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${localStorage.getItem("token")}`,
+                        },
+                        body: JSON.stringify({ repo_url: repoUrl }),
+                      },
+                    );
+                    if (!response.ok) throw new Error(await response.text());
+                    const data = await response.json();
+                    toast({
+                      title: "Benchmark completed",
+                      description: `Runtime: ${data.runtime} seconds`,
+                    });
+                  } catch (error) {
+                    toast({
+                      title: "Benchmark failed",
+                      description:
+                        error instanceof Error
+                          ? error.message
+                          : "Unknown error",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+              >
                 <BarChart3Icon className="h-4 w-4 mr-2" />
                 Run Benchmark
               </Button>
             </CardFooter>
           </Card>
         </TabsContent>
-
         <TabsContent value="metrics" className="mt-6">
           <Card>
             <CardHeader>
               <CardTitle>Empirical Metrics Collection</CardTitle>
               <CardDescription>
-                Gather quantitative data for: {repoUrl || "No repository selected"}
+                Gather quantitative data for:{" "}
+                {repoUrl || "No repository selected"}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -316,17 +352,14 @@ export default function ResearchPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="repoList">Repository List</Label>
-                    <Input 
-                      id="repoList" 
-                      placeholder="Enter GitHub repository URLs (one per line)" 
-                      className="h-32" 
+                    <Input
+                      id="repoList"
+                      placeholder="Enter GitHub repository URLs (one per line)"
+                      className="h-32"
                       value={repoUrl ? repoUrl : ""}
-                      onChange={(e) => {
-                        // Allow manual input if needed, but prefill with repoUrl
-                      }}
+                      onChange={(e) => {}}
                     />
                   </div>
-
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="outputFormat">Output Format</Label>
@@ -341,53 +374,65 @@ export default function ResearchPage() {
                         </SelectContent>
                       </Select>
                     </div>
-
                     <div className="flex items-center space-x-2">
                       <Checkbox id="reproducible" />
-                      <Label htmlFor="reproducible">Enable reproducibility mode (fixed seeds)</Label>
+                      <Label htmlFor="reproducible">
+                        Enable reproducibility mode (fixed seeds)
+                      </Label>
                     </div>
                   </div>
                 </div>
               </div>
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
-              <Button onClick={async () => {
-                if (!repoUrl) {
-                  toast({
-                    title: "No repository selected",
-                    description: "Please analyze a repository in the Visualize page first",
-                    variant: "destructive",
-                  })
-                  return
-                }
-                try {
-                  const repoList = (document.getElementById("repoList") as HTMLInputElement).value.split("\n")
-                  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/dataset`, {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      "Authorization": `Bearer ${localStorage.getItem("token")}`
-                    },
-                    body: JSON.stringify({
-                      language: "python",
-                      repo_count: repoList.length,
-                      metrics: selectedMetrics
-                    })
-                  })
-                  if (!response.ok) throw new Error(await response.text())
-                  const data = await response.json()
-                  toast({
-                    title: "Metrics collected",
-                    description: "Metrics have been collected successfully",
-                  })
-                } catch (error) {
-                  toast({
-                    title: "Metrics collection failed",
-                    description: error instanceof Error ? error.message : "Unknown error",
-                    variant: "destructive",
-                  })
-                }
-              }}>
+              <Button
+                onClick={async () => {
+                  if (!repoUrl) {
+                    toast({
+                      title: "No repository selected",
+                      description:
+                        "Please analyze a repository in the Visualize page first",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  try {
+                    const repoList = (
+                      document.getElementById("repoList") as HTMLInputElement
+                    ).value.split("\n");
+                    const response = await fetch(
+                      `${process.env.NEXT_PUBLIC_API_URL}/analysis/dataset`,
+                      {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${localStorage.getItem("token")}`,
+                        },
+                        body: JSON.stringify({
+                          language: "python",
+                          repo_count: repoList.length,
+                          metrics: selectedMetrics,
+                        }),
+                      },
+                    );
+                    if (!response.ok) throw new Error(await response.text());
+                    const data = await response.json();
+                    toast({
+                      title: "Metrics collected",
+                      description: "Metrics have been collected successfully",
+                    });
+                  } catch (error) {
+                    toast({
+                      title: "Metrics collection failed",
+                      description:
+                        error instanceof Error
+                          ? error.message
+                          : "Unknown error",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+              >
                 <GitHubIcon className="h-4 w-4 mr-2" />
                 Collect Metrics
               </Button>
@@ -400,5 +445,5 @@ export default function ResearchPage() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

@@ -4,6 +4,7 @@ anyio==4.9.0
 cachetools==5.5.2
 certifi==2025.4.26
 charset-normalizer==3.4.1
+chromadb==0.4.22
 click==8.1.8
 dnspython==2.7.0
 ecdsa==0.19.1
@@ -58,15 +59,15 @@ proto-plus==1.26.1
 protobuf==5.29.4
 psutil==7.0.0
 pyAn==0.1.3
-pyasn1==0.6.1
-pyasn1_modules==0.4.2
+pyasn1==0.5.1
+pyasn1_modules==0.3.0
 pydantic==2.11.3
 pydantic-settings==2.9.1
 pydantic_core==2.33.1
 Pygments==2.19.1
 pyparsing==3.2.3
 python-dotenv==1.1.0
-python-jose==3.4.0
+python-jose==3.3.0
 python-multipart==0.0.20
 PyYAML==6.0.2
 regex==2024.11.6
@@ -75,6 +76,7 @@ rich==14.0.0
 rich-toolkit==0.14.3
 rsa==4.9.1
 safetensors==0.5.3
+sentence-transformers==2.2.2
 setuptools==80.1.0
 shellingham==1.5.4
 six==1.17.0

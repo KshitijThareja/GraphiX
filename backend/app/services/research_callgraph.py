@@ -6,6 +6,7 @@ import time
 import shutil
 from .enhanced_callgraph import EnhancedCallgraphGenerator
 from .dynamic_callgraph_builder import DynamicCallGraphBuilder
+import tempfile
 
 
 class ResearchCallgraphGenerator(EnhancedCallgraphGenerator):
@@ -201,26 +202,35 @@ class ResearchCallgraphGenerator(EnhancedCallgraphGenerator):
             else:
                 final_metadata["status"] = "completed"
             aggregated_graph["metadata"] = final_metadata
+            if hasattr(self, 'status_log') and self.status_log:
+                 final_metadata.setdefault("status_log_from_backend", []).extend(self.status_log)
+            logging.info(f"[ResearchCallgraphGenerator] TRY BLOCK END: self.repo_path = {getattr(self, 'repo_path', None)}, perform_cleanup = {perform_cleanup}")
             return aggregated_graph
+
         finally:
-            if (
-                perform_cleanup
-                and hasattr(self, "cleanup_needed")
-                and self.cleanup_needed
-                and hasattr(self, "temp_dir")
-                and self.temp_dir
-                and os.path.exists(self.temp_dir)
-            ):
+            current_repo_path = getattr(self, 'repo_path', None)
+            logging.info(
+                f"[ResearchCallgraphGenerator] FINALLY BLOCK START: "
+                f"self.repo_path = {current_repo_path}, "
+                f"perform_cleanup = {perform_cleanup}"
+            )
+
+            if perform_cleanup and current_repo_path and os.path.exists(current_repo_path) and \
+               current_repo_path.startswith(tempfile.gettempdir()): 
+                logging.info(f"ResearchCallgraphGenerator: Cleaning up temporary directory: {current_repo_path}")
                 try:
-                    logging.info(
-                        f"ResearchCallgraphGenerator performing cleanup of temporary directory: {self.temp_dir}"
-                    )
-                    shutil.rmtree(self.temp_dir)
-                    logging.info(f"Successfully cleaned up {self.temp_dir}")
+                    shutil.rmtree(current_repo_path)
+                    self.repo_path = None 
                 except Exception as e:
-                    logging.error(
-                        f"Error during ResearchCallgraphGenerator cleanup of {self.temp_dir}: {e}"
-                    )
+                    logging.error(f"Error during cleanup of {current_repo_path}: {e}")
+            elif perform_cleanup:
+                logging.warning(
+                    f"ResearchCallgraphGenerator: perform_cleanup is True, but self.repo_path ('{current_repo_path}') "
+                    f"is not a valid temp directory to clean or does not exist."
+                )
+
+            if hasattr(self.dynamic_builder, 'cleanup'):
+                self.dynamic_builder.cleanup()
 
     async def _enhance_with_research_results(self, basic_result: Dict) -> Dict:
         logging.info(

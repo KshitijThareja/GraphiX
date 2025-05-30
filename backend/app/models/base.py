@@ -32,6 +32,17 @@ class Settings(BaseSettings):
         description="OAuth2 redirect URI",
     )
     GEMINI_API_KEY: str = Field(None, description="Gemini API key")
+    
+    # LLM Provider settings
+    OPENAI_API_KEY: Optional[str] = Field(None, description="OpenAI API key")
+    OPENAI_MODEL: Optional[str] = Field("gpt-3.5-turbo", description="Default OpenAI model")
+    ANTHROPIC_API_KEY: Optional[str] = Field(None, description="Anthropic API key")
+    ANTHROPIC_MODEL: Optional[str] = Field("claude-3-sonnet-20240229", description="Default Anthropic model")
+    DEFAULT_LLM_PROVIDER: Optional[str] = Field("openai", description="Default LLM provider to use")
+    
+    # Vector store settings
+    VECTOR_STORE_DIR: Optional[str] = Field(None, description="Directory to store vector embeddings")
+    VECTOR_STORE_PROVIDER: Optional[str] = Field("chroma", description="Vector store provider")
 
     class Config:
         env_file = env_path if env_path.exists() else None

@@ -5,10 +5,18 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        source: "/api/backend/:path*", // Proxy requests from this path on the frontend
-        destination: "http://localhost:8000/:path*", // Forward to the backend
+        source: "/api/backend/:path*",
+        destination: "http://localhost:8000/:path*", // Updated port
+      },
+      {
+        source: "/auth/callback",
+        destination: "/api/backend/auth/callback",
       },
     ];
+  },
+  env: {
+    NEXT_PUBLIC_GITHUB_CLIENT_ID: "Iv23liN2E0yjs3lU3fr2",
+    NEXT_PUBLIC_API_URL: "http://localhost:8000", // Corrected: base URL for backend
   },
 };
 

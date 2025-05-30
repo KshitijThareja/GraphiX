@@ -1,78 +1,87 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { RefreshCwIcon, AlertTriangleIcon, CheckCircleIcon, XCircleIcon } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
-import { useCallgraph } from "@/context/CallgraphContext"
-
+"use client";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import {
+  RefreshCwIcon,
+  AlertTriangleIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+} from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { useCallgraph } from "@/context/CallgraphContext";
 interface RefactoringItem {
-  id: string
-  title: string
-  description: string
-  severity: "high" | "medium" | "low"
-  location: string
-  before: string
-  after: string
-  django_best_practice?: string // Add optional field for Django best practices
+  id: string;
+  title: string;
+  description: string;
+  severity: "high" | "medium" | "low";
+  location: string;
+  before: string;
+  after: string;
+  django_best_practice?: string;
 }
-
 export default function RefactoringPage() {
-  const { repoUrl } = useCallgraph()
-  const [selectedTab, setSelectedTab] = useState("all")
-  const { toast } = useToast()
-  const [refactoringSuggestions, setRefactoringSuggestions] = useState<RefactoringItem[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-
+  const { repoUrl } = useCallgraph();
+  const [selectedTab, setSelectedTab] = useState("all");
+  const { toast } = useToast();
+  const [refactoringSuggestions, setRefactoringSuggestions] = useState<
+    RefactoringItem[]
+  >([]);
+  const [isLoading, setIsLoading] = useState(false);
   useEffect(() => {
     if (repoUrl) {
-      setIsLoading(true)
+      setIsLoading(true);
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/analysis/refactoring`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-        body: JSON.stringify({ repo_url: repoUrl })
+        body: JSON.stringify({ repo_url: repoUrl }),
       })
-        .then(res => {
-          if (!res.ok) throw new Error("Failed to fetch refactoring suggestions")
-          return res.json()
+        .then((res) => {
+          if (!res.ok)
+            throw new Error("Failed to fetch refactoring suggestions");
+          return res.json();
         })
-        .then(data => setRefactoringSuggestions(data.suggestions))
-        .catch(err => toast({
-          title: "Error",
-          description: err.message,
-          variant: "destructive",
-        }))
-        .finally(() => setIsLoading(false))
+        .then((data) => setRefactoringSuggestions(data.suggestions))
+        .catch((err) =>
+          toast({
+            title: "Error",
+            description: err.message,
+            variant: "destructive",
+          }),
+        )
+        .finally(() => setIsLoading(false));
     }
-  }, [repoUrl, toast])
-
+  }, [repoUrl, toast]);
   const handleApply = (id: string) => {
     toast({
       title: "Refactoring applied",
       description: `The refactoring suggestion ${id} has been applied to your codebase`,
-    })
-    // TODO: Implement actual code modification (requires file system access)
-  }
-
+    });
+  };
   const handleApplyAll = () => {
-    refactoringSuggestions.forEach((item) => handleApply(item.id))
+    refactoringSuggestions.forEach((item) => handleApply(item.id));
     toast({
       title: "All refactorings applied",
-      description: "All refactoring suggestions have been applied to your codebase",
-    })
-  }
-
+      description:
+        "All refactoring suggestions have been applied to your codebase",
+    });
+  };
   const filteredSuggestions =
     selectedTab === "all"
       ? refactoringSuggestions
-      : refactoringSuggestions.filter((item) => item.severity === selectedTab)
-
+      : refactoringSuggestions.filter((item) => item.severity === selectedTab);
   if (!repoUrl) {
     return (
       <div className="container py-12">
@@ -80,19 +89,19 @@ export default function RefactoringPage() {
         <Card>
           <CardHeader>
             <CardTitle>AI-Driven Refactoring</CardTitle>
-            <CardDescription>No repository selected. Please analyze a repository in the Visualize page first.</CardDescription>
+            <CardDescription>
+              No repository selected. Please analyze a repository in the
+              Visualize page first.
+            </CardDescription>
           </CardHeader>
         </Card>
       </div>
-    )
+    );
   }
-
-  if (isLoading) return <div>Loading...</div>
-
+  if (isLoading) return <div>Loading...</div>;
   return (
     <div className="container py-12">
       <h1 className="text-3xl font-bold mb-6">Refactoring Suggestions</h1>
-
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -109,7 +118,11 @@ export default function RefactoringPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="all" value={selectedTab} onValueChange={setSelectedTab}>
+          <Tabs
+            defaultValue="all"
+            value={selectedTab}
+            onValueChange={setSelectedTab}
+          >
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="all">
                 All
@@ -120,23 +133,34 @@ export default function RefactoringPage() {
               <TabsTrigger value="high">
                 High Priority
                 <Badge variant="outline" className="ml-2">
-                  {refactoringSuggestions.filter((item) => item.severity === "high").length}
+                  {
+                    refactoringSuggestions.filter(
+                      (item) => item.severity === "high",
+                    ).length
+                  }
                 </Badge>
               </TabsTrigger>
               <TabsTrigger value="medium">
                 Medium Priority
                 <Badge variant="outline" className="ml-2">
-                  {refactoringSuggestions.filter((item) => item.severity === "medium").length}
+                  {
+                    refactoringSuggestions.filter(
+                      (item) => item.severity === "medium",
+                    ).length
+                  }
                 </Badge>
               </TabsTrigger>
               <TabsTrigger value="low">
                 Low Priority
                 <Badge variant="outline" className="ml-2">
-                  {refactoringSuggestions.filter((item) => item.severity === "low").length}
+                  {
+                    refactoringSuggestions.filter(
+                      (item) => item.severity === "low",
+                    ).length
+                  }
                 </Badge>
               </TabsTrigger>
             </TabsList>
-
             <TabsContent value={selectedTab} className="mt-6">
               <div className="space-y-6">
                 {filteredSuggestions.map((suggestion) => (
@@ -144,8 +168,12 @@ export default function RefactoringPage() {
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          {suggestion.severity === "high" && <AlertTriangleIcon className="h-5 w-5 text-destructive" />}
-                          {suggestion.severity === "medium" && <AlertTriangleIcon className="h-5 w-5 text-amber-500" />}
+                          {suggestion.severity === "high" && (
+                            <AlertTriangleIcon className="h-5 w-5 text-destructive" />
+                          )}
+                          {suggestion.severity === "medium" && (
+                            <AlertTriangleIcon className="h-5 w-5 text-amber-500" />
+                          )}
                           {suggestion.severity === "low" && (
                             <AlertTriangleIcon className="h-5 w-5 text-muted-foreground" />
                           )}
@@ -164,7 +192,9 @@ export default function RefactoringPage() {
                                 {suggestion.severity} priority
                               </Badge>
                             </CardTitle>
-                            <CardDescription>{suggestion.description}</CardDescription>
+                            <CardDescription>
+                              {suggestion.description}
+                            </CardDescription>
                           </div>
                         </div>
                         <Badge variant="outline">{suggestion.location}</Badge>
@@ -191,15 +221,22 @@ export default function RefactoringPage() {
                           </pre>
                         </div>
                       </div>
-                      {suggestion.django_best_practice && suggestion.django_best_practice !== "N/A" && (
-                        <div className="mt-4">
-                          <h4 className="font-medium mb-2">Django Best Practice</h4>
-                          <p className="text-sm text-muted-foreground">{suggestion.django_best_practice}</p>
-                        </div>
-                      )}
+                      {suggestion.django_best_practice &&
+                        suggestion.django_best_practice !== "N/A" && (
+                          <div className="mt-4">
+                            <h4 className="font-medium mb-2">
+                              Django Best Practice
+                            </h4>
+                            <p className="text-sm text-muted-foreground">
+                              {suggestion.django_best_practice}
+                            </p>
+                          </div>
+                        )}
                     </CardContent>
                     <CardFooter className="flex justify-end">
-                      <Button onClick={() => handleApply(suggestion.id)}>Apply Refactoring</Button>
+                      <Button onClick={() => handleApply(suggestion.id)}>
+                        Apply Refactoring
+                      </Button>
                     </CardFooter>
                   </Card>
                 ))}
@@ -209,5 +246,5 @@ export default function RefactoringPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
