@@ -2,11 +2,33 @@
 import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import {
-  CallgraphNode,
   CallgraphLink,
   DynamicAttributeProvider,
   VisualizationAttributes,
 } from "@/lib/visualization/attributes";
+
+// Extend the CallgraphNode type to include our visualization-specific properties
+export interface CallgraphNode {
+  id: string;
+  name?: string;
+  type: string;
+  highlighted?: boolean;
+  selected?: boolean;
+  // Properties needed for D3 force simulation
+  x?: number;
+  y?: number;
+  fx?: number | null;
+  fy?: number | null;
+  vx?: number;
+  vy?: number;
+  index?: number;
+  // Additional metadata for visualization and analysis
+  complexity?: number;
+  file?: string;
+  metadata?: {
+    [key: string]: any;
+  };
+}
 import { Button } from "./ui/button";
 import { Info, Maximize, Minimize } from "lucide-react";
 import {
@@ -25,10 +47,12 @@ interface CallgraphVisualizationProps {
     };
   };
   className?: string;
+  onNodeClick?: (nodeId: string) => void;
 }
 export default function CallgraphVisualization({
   data,
   className,
+  onNodeClick,
 }: CallgraphVisualizationProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -137,6 +161,10 @@ export default function CallgraphVisualization({
       .call(drag(simulation) as any)
       .on("click", (event, d) => {
         setSelectedNode(d);
+        // Call the onNodeClick callback if provided
+        if (onNodeClick && d.id) {
+          onNodeClick(d.id);
+        }
         event.stopPropagation();
       });
     const node = nodeGroup
@@ -145,13 +173,24 @@ export default function CallgraphVisualization({
       .join("circle")
       .attr("r", (d) => attributes.nodeSize(d))
       .attr("fill", (d) => attributes.nodeColor(d))
-      .attr("stroke", (d) => (d.highlighted ? "#ff3e00" : "transparent"))
-      .attr("stroke-width", (d) => (d.highlighted ? 3 : 0))
+      .attr("stroke", (d) => {
+        if (d.highlighted) return "#ff3e00";
+        if (d.selected) return "#4c9aff";
+        return "transparent";
+      })
+      .attr("stroke-width", (d) => {
+        if (d.highlighted || d.selected) return 3;
+        return 0;
+      })
       .style("cursor", "pointer")
       .call(drag(simulation) as any)
       .on("click", (event, d) => {
         event.stopPropagation();
         setSelectedNode(d);
+        // Call the onNodeClick callback if provided
+        if (onNodeClick && d.id) {
+          onNodeClick(d.id);
+        }
       });
     const labels = nodeGroup
       .append("text")

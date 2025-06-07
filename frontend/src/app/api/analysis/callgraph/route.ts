@@ -45,8 +45,12 @@ export async function POST(request: NextRequest) {
     console.log(
       `POST /api/analysis/callgraph: Forwarding request for ${repo_url} to backend at ${backendUrl}.`,
     );
+    // No timeout - allow the request to complete for as long as needed
+    console.log(`POST /api/analysis/callgraph: No timeout set - waiting for repository analysis to complete`);
+    
     let backendResponse;
     try {
+      
       backendResponse = await fetch(backendUrl, {
         method: "POST",
         headers: {
@@ -59,14 +63,58 @@ export async function POST(request: NextRequest) {
           framework_hint: framework_hint || "generic",
           context_sensitivity: context_sensitivity || 2,
         }),
-        // Increased timeout for large repositories
-        signal: AbortSignal.timeout(300000), // 5 minutes timeout
-        // Add additional options for better reliability
+        // No timeout signal
         cache: 'no-store',
-        next: { revalidate: 0 },
       });
     } catch (error) {
       console.error(`POST /api/analysis/callgraph: Connection error to backend:`, error);
+      
+      // Check if it's a connection error that might still be processing in the background
+      const isConnectionError = error instanceof Error;
+      
+      if (isConnectionError) {
+        console.log(`POST /api/analysis/callgraph: Connection error, but backend might still be processing`);
+        console.log(`Error details:`, error);
+        
+        // Store the repository URL in a file to help with polling
+        try {
+          const pollInfoPath = `/tmp/graphix_processing_${encodeURIComponent(repo_url.replace(/[^a-zA-Z0-9]/g, '_'))}.json`;
+          const pollInfo = {
+            repo_url: repo_url,
+            started_at: new Date().toISOString(),
+            framework_hint: framework_hint || "generic",
+            research_grade: research_grade || false
+          };
+          console.log(`Saving polling info to ${pollInfoPath}`);
+          await fs.writeFile(pollInfoPath, JSON.stringify(pollInfo, null, 2));
+        } catch (fileError) {
+          console.error("Failed to save polling information:", fileError);
+        }
+        
+        // Return a special response that indicates the backend is still processing
+        return NextResponse.json({
+          status: 'processing',
+          message: 'The analysis is taking longer than expected but is still running in the background. Please wait a few minutes and try refreshing the page to check if results are available.',
+          data: {
+            nodes: [],
+            links: [],
+            metadata: {
+              status_log_from_backend: [
+                `Analysis is still running on the backend. The repository may be complex or large.`,
+                `You can try refreshing the page in a few minutes to check for results.`,
+                `Repository URL: ${repo_url}`,
+                `Analysis started with framework hint: ${framework_hint || "generic"}`
+              ],
+              warning: 'Analysis timeout - backend processing continues',
+              status: 'processing',
+              repo_url: repo_url,
+              framework_hint: framework_hint,
+              research_grade: research_grade
+            }
+          }
+        }, { status: 202 }); // 202 Accepted indicates the request was valid but processing is not complete
+      }
+      
       return NextResponse.json({
         error: `Cannot connect to backend server at ${backendUrl}. Please ensure the backend server is running.`,
         detail: error instanceof Error ? error.message : 'Unknown connection error',

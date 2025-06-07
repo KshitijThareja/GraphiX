@@ -25,6 +25,7 @@ from ..services.research_callgraph import ResearchCallgraphGenerator
 from ..services.scope_manager import ScopeManager
 from ..services.definition_manager import DefinitionManager
 from ..services.context_flow_analysis import ContextFlowAnalyzer, TypeInferenceEngine
+from ..services.documentation_service import DocumentationService
 from ..models.user import User
 from ..services.auth import get_current_user
 from ..models.base import Base, oauth2_scheme, settings, get_db
@@ -747,3 +748,53 @@ def _calculate_metric(callgraph: dict, metric: str) -> float:
     elif metric == "cohesion":
         return 1.0
     return 0.0
+
+
+@router.get("/callgraph/status")
+async def get_callgraph_status(
+    repo_url: str
+):
+    """
+    Check the status of a callgraph analysis for a repository.
+    This endpoint is used by the frontend to poll for completion of analysis.
+    """
+    try:
+        logger.info(f"Checking status for repository: {repo_url}")
+        
+        # Check if documentation has been generated for this repository
+        # We'll check the documentation_store in the documentation router
+        # Since we don't have direct DB access here, we'll use the database check below
+        
+        # Check if there's a completed callgraph without documentation
+        # This would indicate the analysis is done but documentation generation is not
+        db = next(get_db())
+        analysis_result = db.query(AnalysisResult).filter(
+            AnalysisResult.repo_url == repo_url
+        ).order_by(AnalysisResult.created_at.desc()).first()
+        
+        if analysis_result:
+            # If we have callgraph data, consider the analysis complete
+            logger.info(f"Found callgraph for {repo_url}, analysis is complete")
+            return {
+                "status": "completed",
+                "message": "Analysis is complete, data is available",
+                "callgraph_id": analysis_result.id
+            }
+        
+        # Check if there's an ongoing analysis
+        # This is a simplified check - you might want to implement a proper
+        # tracking system for in-progress analyses
+        # For now, we'll just assume it's processing if we didn't find completed results
+        
+        logger.info(f"No completed analysis found for {repo_url}, assuming it's still processing")
+        return {
+            "status": "processing",
+            "message": "Analysis is still in progress"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error checking callgraph status: {str(e)}\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to check analysis status: {str(e)}"
+        )

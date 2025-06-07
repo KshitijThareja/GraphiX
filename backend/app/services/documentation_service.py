@@ -1,8 +1,28 @@
-import os
+import os# Attempt to import the LLMDocGeneratorService, but don't fail if it's not there yet
+try:
+    from .llm_doc_generator_service import LLMDocGeneratorService
+except ImportError:
+    LLMDocGeneratorService = None 
+    # This allows the service to run without LLM features if the generator isn't implemented
+
+import os # Added os import, will be used later
+
 import ast
 import logging
-import re
+import os
+import sys
 from typing import Dict, List, Set, Optional, Tuple, Any, Union
+
+# Print Python path to diagnose import issues
+print("\n\n*** PYTHON PATH in documentation_service.py ***")
+for path in sys.path:
+    print(f"  {path}")
+print("\n")
+
+try:
+    from .llm_doc_generator_service import LLMDocGeneratorService
+except ImportError:
+    LLMDocGeneratorService = None # Allows service to run if LLM part is not yet implemented
 import asyncio
 from datetime import datetime
 
@@ -300,34 +320,223 @@ class DocumentationService:
             except Exception as e:
                 logger.error(f"Error extracting documentation from {file_path}: {str(e)}")
                 
+    async def _get_connected_elements_for_llm(self, node_id: str, nodes: List[Dict], links: List[Dict], max_context_elements: int = 5) -> Dict[str, Any]:
+        """
+        Gathers context for a given node from the callgraph, including directly connected elements.
+        This context is intended to be passed to an LLM for documentation generation.
+        """
+        context = {"node_id": node_id, "connections": []}
+        connected_node_ids = set()
+
+        # Find direct connections (callers and callees)
+        for link in links:
+            if link.get("source") == node_id:
+                connected_node_ids.add(link.get("target"))
+            elif link.get("target") == node_id:
+                connected_node_ids.add(link.get("source"))
+
+        # Get details for connected nodes
+        for n_id in list(connected_node_ids)[:max_context_elements]: # Limit context size
+            for n_data in nodes:
+                if n_data.get("id") == n_id:
+                    context["connections"].append({
+                        "id": n_data.get("id"),
+                        "type": n_data.get("type"),
+                        "file": n_data.get("file", "N/A"),
+                        "signature": n_data.get("signature", "N/A"),
+                        "docstring_preview": (n_data.get("docstring", "")[:100] + "...") if n_data.get("docstring") else "No docstring"
+                    })
+                    break
+        return context
+
+    async def generate_documentation_for_callgraph(self, callgraph_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Generate documentation for an entire callgraph by its ID using batch processing.
+        
+        Args:
+            callgraph_id: The ID of the callgraph to generate documentation for
+            
+        Returns:
+            Updated callgraph with generated documentation, or None if callgraph not found
+        """
+        logger.info(f"Generating documentation for callgraph: {callgraph_id}")
+        
+        # Get the callgraph
+        callgraph = await self.callgraph_service.get_callgraph(callgraph_id)
+        if not callgraph:
+            logger.error(f"Callgraph not found: {callgraph_id}")
+            return None
+            
+        # Collect all nodes that need documentation (don't have docstrings)
+        nodes_needing_docs = []
+        for node_id, node_data in callgraph.get('nodes', {}).items():
+            if not node_data.get('docstring') and node_data.get('type') in ['function', 'class', 'method', 'module']:
+                nodes_needing_docs.append(node_data)
+                
+        logger.info(f"Found {len(nodes_needing_docs)} nodes needing documentation in callgraph {callgraph_id}")
+        
+        if not nodes_needing_docs:
+            logger.info(f"No nodes need documentation in callgraph {callgraph_id}")
+            return callgraph
+        
+        # Initialize LLM doc generator if not already done
+        if not hasattr(self, 'llm_doc_generator') or self.llm_doc_generator is None:
+            try:
+                self.llm_doc_generator = LLMDocGeneratorService()
+                logger.info("Initialized LLMDocGeneratorService for documentation generation")
+            except Exception as e:
+                logger.error(f"Failed to initialize LLMDocGeneratorService: {e}")
+                return callgraph
+        
+        # Process nodes in batches for efficiency and rate limit management
+        updated_nodes = {}
+        
+        # Use the batch processor from LLMDocGeneratorService if it exists
+        if hasattr(self.llm_doc_generator, 'batch_processor'):
+            # Prepare the processing function
+            async def process_node(node):
+                node_id = node.get('id')
+                context_elements = self._get_context_for_node(node, callgraph)
+                return await self._generate_documentation_for_node(node, context_elements)
+            
+            # Process in batches
+            logger.info(f"Processing {len(nodes_needing_docs)} nodes in batches")
+            batch_results = await self.llm_doc_generator.batch_processor.process_batch(
+                nodes_needing_docs, process_node
+            )
+            
+            # Process results
+            for node, docs in batch_results:
+                if docs:
+                    node_id = node.get('id')
+                    updated_node = node.copy()  # Create a copy to avoid modifying the original
+                    updated_node.update(docs)
+                    updated_nodes[node_id] = updated_node
+                    logger.info(f"Generated documentation for node: {node_id}")
+                else:
+                    logger.warning(f"Failed to generate documentation for node: {node.get('id')}")
+        else:
+            # Fallback to processing one by one if batch processor not available
+            logger.warning("Batch processor not available, processing nodes one by one")
+            for node in nodes_needing_docs:
+                node_id = node.get('id')
+                
+                # Get context elements for this node
+                context_elements = self._get_context_for_node(node, callgraph)
+                
+                # Generate documentation
+                docs = await self._generate_documentation_for_node(node, context_elements)
+                if docs:
+                    # Update the node with the generated documentation
+                    updated_node = node.copy()  # Create a copy to avoid modifying the original
+                    updated_node.update(docs)
+                    updated_nodes[node_id] = updated_node
+                    logger.info(f"Generated documentation for node: {node_id}")
+                else:
+                    logger.warning(f"Failed to generate documentation for node: {node_id}")
+        
+        # Update the callgraph with the generated documentation
+        for node_id, updated_node in updated_nodes.items():
+            callgraph['nodes'][node_id] = updated_node
+            
+        logger.info(f"Updated {len(updated_nodes)} nodes with documentation in callgraph {callgraph_id}")
+        
+        return callgraph
+    
+    async def _get_context_for_node(self, node: Dict[str, Any], callgraph: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Get context elements for a node to help with documentation generation.
+        Includes related nodes based on callgraph relationships.
+        
+        Args:
+            node: The node to get context for
+            callgraph: The callgraph containing the node
+            
+        Returns:
+            List of related nodes that provide context
+        """
+        node_id = node.get('id')
+        context_elements = []
+        
+        # Get links from the callgraph
+        links = callgraph.get('links', [])
+        nodes = callgraph.get('nodes', {})
+        
+        # Find direct relationships (calls, called by, etc.)
+        related_links = [link for link in links if link.get('source') == node_id or link.get('target') == node_id]
+        
+        # Add related nodes to context
+        for link in related_links:
+            related_id = link.get('source') if link.get('target') == node_id else link.get('target')
+            if related_id in nodes and related_id != node_id:
+                relation_type = link.get('type', 'unknown')
+                context_elements.append({
+                    'node': nodes[related_id],
+                    'relation': relation_type,
+                    'direction': 'incoming' if link.get('target') == node_id else 'outgoing'
+                })
+        
+        # Limit to the most relevant context elements (e.g., max 5)
+        return context_elements[:5]
+    
+    async def _generate_documentation_for_node(self, node: Dict[str, Any], context_elements: List[Dict[str, Any]]) -> Optional[Dict[str, str]]:
+        """
+        Generate documentation for a single node using the LLM.
+        
+        Args:
+            node: The node to generate documentation for
+            context_elements: Related elements that provide context
+            
+        Returns:
+            Dictionary with docstring and signature, or None if generation failed
+        """
+        try:
+            # Prepare context elements in the format expected by LLMDocGeneratorService
+            formatted_context = []
+            for ctx in context_elements:
+                formatted_context.append(ctx.get('node', {}))
+            
+            # Generate documentation using LLMDocGeneratorService
+            return await self.llm_doc_generator.generate_documentation_for_node(node, formatted_context)
+            
+        except Exception as e:
+            logger.error(f"Error generating documentation for node {node.get('id')}: {e}")
+            return None
+    
     async def _extract_documentation_from_callgraph(self, callgraph_result: Dict) -> None:
         """
-        Extract docstrings and signatures only for files referenced in the callgraph nodes.
-        This is more efficient than processing all files when we already have callgraph data.
+        Extract docstrings and signatures. If local repo is unavailable, attempts to use LLM
+        to generate documentation based on callgraph metadata and structure.
+        Otherwise, extracts from files referenced in callgraph nodes.
         
         Args:
             callgraph_result: Callgraph data with nodes and links
         """
-        # Check if we have a valid local repository path
         has_local_repo = self.repo_path and os.path.isdir(self.repo_path)
+        llm_doc_generator = None
+        
         if not has_local_repo:
-            logger.warning("Repository path is not available for full documentation extraction")
-            logger.info("Falling back to extracting documentation from callgraph metadata only")
-        
-        # Extract unique file paths from callgraph nodes if we have a local repo
-        unique_files = set()
-        
-        # Always extract documentation from the callgraph data itself
+            logger.warning("Repository path is not available for full documentation extraction.")
+            
+            # Initialize LLM doc generator if not already done
+            if LLMDocGeneratorService:
+                try:
+                    llm_doc_generator = LLMDocGeneratorService()
+                    logger.info("Attempting to use LLMDocGeneratorService for documentation.")
+                except Exception as e:
+                    logger.error(f"Error initializing LLMDocGeneratorService: {e}. Falling back to callgraph metadata.")
+            else:
+                logger.warning("LLMDocGeneratorService not found/configured. Falling back to callgraph metadata only.")
+                
         nodes = callgraph_result.get("nodes", [])
         links = callgraph_result.get("links", [])
         
-        # Create module, class, and function entries from callgraph nodes
         for node in nodes:
-            node_id = node.get("id", "")
+            node_id = node.get("id")
             if not node_id:
+                logger.debug(f"Skipping node with no ID: {node}")
                 continue
                 
-            # Extract information from node
             node_parts = node_id.split(".")
             file_path = node.get("file", "")
             docstring = node.get("docstring", "")
@@ -335,10 +544,52 @@ class DocumentationService:
             signature = node.get("signature", "")
             complexity = node.get("complexity", 0)
             
-            # Determine the module name from the node ID
-            module_name = ".".join(node_parts[:-1]) if len(node_parts) > 1 else node_parts[0]
+            # If local repo not available, try using LLM for documentation
+            if not has_local_repo and llm_doc_generator:
+                try:
+                    logger.debug(f"Using LLM to generate documentation for node: {node_id}")
+                    context_elements = await self._get_connected_elements_for_llm(node_id, nodes, links)
+                    
+                    llm_node_data = {
+                        "id": node_id,
+                        "type": node_type,
+                        "file": file_path,
+                        "current_docstring": docstring,
+                        "current_signature": signature,
+                        "name_parts": node_parts
+                    }
+                    
+                    # Actual LLM call implementation
+                    logger.info(f"Calling LLMDocGeneratorService.generate_documentation_for_node for {node_id}")
+                    llm_generated_docs = await llm_doc_generator.generate_documentation_for_node(
+                        node_data=llm_node_data, 
+                        context_elements=context_elements.get("connections", [])
+                    )
+                    
+                    if llm_generated_docs:
+                        docstring = llm_generated_docs.get("docstring", docstring)
+                        signature = llm_generated_docs.get("signature", signature)
+                        logger.info(f"LLM successfully generated documentation for {node_id}")
+                
+                    # If we still don't have docstring after LLM attempt, use placeholder
+                    if not docstring and (node_type == "function" or node_type == "class" or node_type == "method"):
+                        docstring = f"LLM-enhanced documentation placeholder for {node_type} '{node_id}'."
+                        logger.info(f"LLM placeholder docstring for {node_id}")
+                    if not signature and (node_type == "function" or node_type == "method"):
+                        signature = f"{node_parts[-1] if node_parts else node_id}(...)" # Basic signature
+                        logger.info(f"LLM placeholder signature for {node_id}")
+
+                except Exception as e:
+                    logger.error(f"Error using LLM for node {node_id}: {e}. Using original metadata.")
+            elif not has_local_repo and not llm_doc_generator and not docstring:
+                logger.info(f"Falling back to basic metadata for node {node_id} as LLM service is unavailable and docstring is empty.")
+
+            module_name = "".join(node_parts[:-1]) if len(node_parts) > 1 else node_parts[0]
+            if not module_name and file_path:
+                module_name = os.path.splitext(os.path.basename(file_path))[0]
+            if not module_name:
+                module_name = "unknown_module"
             
-            # Create or update module entry
             if module_name not in self.modules:
                 self.modules[module_name] = {
                     "name": module_name,
@@ -349,91 +600,97 @@ class DocumentationService:
                     "functions": []
                 }
             
-            # Handle different node types
-            if node_type == "class" or "class" in node_id.lower():
-                # Add class to documentation
-                class_name = node_parts[-1]
-                self.classes[node_id] = {
-                    "name": class_name,
-                    "qualified_name": node_id,
+            element_name = node_parts[-1] if node_parts else node_id
+
+            if node_type == "class":
+                class_qname = node_id
+                self.classes[class_qname] = {
+                    "name": element_name,
+                    "qualified_name": class_qname,
                     "module": module_name,
                     "file": file_path,
                     "docstring": docstring,
                     "bases": node.get("bases", []),
                     "methods": []
                 }
-                # Add to module's classes list
-                if node_id not in self.modules[module_name]["classes"]:
-                    self.modules[module_name]["classes"].append(node_id)
-            elif node_type == "function" or "function" in node_id.lower() or len(node_parts) > 0:
-                # Determine if this is a method
-                is_method = False
-                class_name = None
+                if class_qname not in self.modules[module_name]["classes"]:
+                    self.modules[module_name]["classes"].append(class_qname)
+
+            elif node_type == "function" or node_type == "method":
+                is_method = (node_type == "method")
+                parent_class_qname = None
+
+                if len(node_parts) > 1:
+                    potential_class_qname = ".".join(node_parts[:-1])
+                    if potential_class_qname in self.classes:
+                        is_method = True # Infer it's a method if parent is a known class
+                        parent_class_qname = potential_class_qname
                 
-                # Check if this belongs to a class
-                for class_id in self.classes:
-                    if node_id.startswith(class_id + "."):
-                        is_method = True
-                        class_name = class_id
-                        break
-                
-                # Add function to documentation
+                func_qname = node_id
                 func_data = {
-                    "name": node_parts[-1],
-                    "qualified_name": node_id,
+                    "name": element_name,
+                    "qualified_name": func_qname,
                     "module": module_name,
                     "file": file_path,
                     "docstring": docstring,
                     "is_method": is_method,
-                    "class_name": class_name,
-                    "signature": signature or node_parts[-1] + "()",
+                    "class_name": parent_class_qname,
+                    "signature": signature or (element_name + "(...)"),
                     "complexity": complexity
                 }
-                self.functions[node_id] = func_data
+                self.functions[func_qname] = func_data
                 
-                # Add to module's functions list or class's methods list
-                if is_method and class_name in self.classes:
-                    if func_data not in self.classes[class_name]["methods"]:
-                        self.classes[class_name]["methods"].append(func_data)
-                else:
-                    if node_id not in self.modules[module_name]["functions"]:
-                        self.modules[module_name]["functions"].append(node_id)
-        
-        # If we have a local repo, extract additional documentation from files
-        if has_local_repo:
-            for node in callgraph_result.get("nodes", []):
-                if "file" in node and node["file"]:
-                    # If the file path is absolute, make it relative to repo_path
-                    file_path = node["file"]
-                    if os.path.isabs(file_path):
-                        try:
-                            # Handle paths that might be from temp directories during original analysis
-                            file_name = os.path.basename(file_path)
-                            # Try to find the file in the current repo_path
-                            for root, _, files in os.walk(self.repo_path):
-                                if file_name in files:
-                                    possible_path = os.path.join(root, file_name)
-                                    unique_files.add(possible_path)
-                                    break
-                        except Exception:
-                            # If we can't find it, just continue
-                            continue
-                    else:
-                        # If it's already relative, join with repo_path
-                        unique_files.add(os.path.join(self.repo_path, file_path))
+                if is_method and parent_class_qname and parent_class_qname in self.classes:
+                    if not any(m["qualified_name"] == func_qname for m in self.classes[parent_class_qname]["methods"]):
+                        self.classes[parent_class_qname]["methods"].append(func_data)
+                elif not is_method:
+                    if func_qname not in self.modules[module_name]["functions"]:
+                         self.modules[module_name]["functions"].append(func_qname)
             
-            # Process each unique file
-            logger.info(f"Extracting additional documentation from {len(unique_files)} files referenced in callgraph")
-            for file_path in unique_files:
-                if os.path.exists(file_path) and file_path.endswith(".py"):
+            elif node_type == "module":
+                if node_id not in self.modules:
+                     self.modules[node_id] = {
+                        "name": element_name,
+                        "qualified_name": node_id,
+                        "file": file_path,
+                        "docstring": docstring,
+                        "classes": [],
+                        "functions": []
+                    }
+                elif docstring and not self.modules[node_id]["docstring"]:
+                    self.modules[node_id]["docstring"] = docstring
+
+        if has_local_repo:
+            unique_files_to_scan = set()
+            for node in nodes:
+                node_file = node.get("file")
+                if node_file:
+                    abs_node_file = os.path.join(self.repo_path, node_file) if not os.path.isabs(node_file) else node_file
+                    if os.path.exists(abs_node_file) and abs_node_file.endswith(".py"):
+                        unique_files_to_scan.add(abs_node_file)
+                    else:
+                        found_path = None
+                        if self.repo_path and os.path.isdir(self.repo_path):
+                            for root, _, files_in_dir in os.walk(self.repo_path):
+                                if os.path.basename(node_file) in files_in_dir:
+                                    found_path = os.path.join(root, os.path.basename(node_file))
+                                    break
+                        if found_path and os.path.exists(found_path) and found_path.endswith(".py"):
+                             unique_files_to_scan.add(found_path)
+                        elif node_file:
+                            logger.debug(f"File '{node_file}' from callgraph node '{node.get('id')}' not found or not a Python file in repo path: {self.repo_path}")
+
+            if unique_files_to_scan:
+                logger.info(f"Extracting detailed documentation from {len(unique_files_to_scan)} Python files referenced in callgraph.")
+                for file_path_to_scan in unique_files_to_scan:
                     try:
-                        await self._extract_file_documentation(file_path)
+                        await self._extract_file_documentation(file_path_to_scan)
                     except Exception as e:
-                        logger.error(f"Error extracting documentation from {file_path}: {str(e)}")
-                else:
-                    logger.warning(f"File referenced in callgraph not found: {file_path}")
+                        logger.error(f"Error extracting full documentation from file {file_path_to_scan}: {e}")
+            else:
+                logger.info("No Python files from callgraph found in the local repository for detailed extraction.")
         
-        logger.info(f"Documentation extracted: {len(self.modules)} modules, {len(self.classes)} classes, {len(self.functions)} functions")
+        logger.info(f"Documentation extraction phase complete. Found: {len(self.modules)} modules, {len(self.classes)} classes, {len(self.functions)} functions.")
     
     async def _extract_file_documentation(self, file_path: str) -> None:
         """

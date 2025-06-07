@@ -47,8 +47,92 @@ export default function VisualizePage() {
   const { toast } = useToast();
   const { isAuthenticated } = useAuth();
   const MAX_RETRIES = 3;
-  const REQUEST_TIMEOUT = 120000;
+  const REQUEST_TIMEOUT = 200000;
   const RETRY_DELAY = 5000;
+  // Check if analysis is already in progress or complete
+  const checkExistingResults = async () => {
+    if (!repoUrl) return null;
+    
+    try {
+      // Get the auth token
+      const token = localStorage.getItem('authToken');
+      
+      // Check if there are existing results for this repository
+      const checkResponse = await fetch(`/api/analysis/callgraph/status?repo_url=${encodeURIComponent(repoUrl)}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
+        cache: 'no-store',
+      });
+      
+      if (checkResponse.ok) {
+        const status = await checkResponse.json();
+        console.log("Status check result:", status);
+        return status;
+      }
+    } catch (error) {
+      console.error("Error checking analysis status:", error);
+    }
+    return null;
+  };
+  
+  // Poll for analysis results
+  const pollForResults = async () => {
+    setIsLoading(true);
+    let attempts = 0;
+    const maxAttempts = 20; // Maximum 20 attempts with 10 second intervals = ~3.3 minutes of polling
+    
+    const poll = async () => {
+      if (attempts >= maxAttempts) {
+        toast({
+          title: "Polling timeout",
+          description: "Couldn't retrieve analysis results after multiple attempts. The analysis may still be running. Try again later.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      attempts++;
+      const status = await checkExistingResults();
+      
+      if (status && status.status === 'completed' && status.data) {
+        // Success! We have results
+        const normalizedData = {
+          nodes: status.data.nodes || [],
+          links: status.data.links || [],
+          metadata: status.data.metadata || {}
+        };
+        
+        console.log("Retrieved callgraph data via polling:", normalizedData);
+        setCallgraphData(normalizedData);
+        
+        toast({
+          title: "Analysis complete",
+          description: "Successfully retrieved analysis results for " + repoUrl,
+        });
+        
+        setIsLoading(false);
+      } else if (status && status.status === 'error') {
+        // Error occurred during analysis
+        toast({
+          title: "Analysis failed",
+          description: status.message || "An unknown error occurred during analysis",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+      } else {
+        // Still processing or no status - continue polling
+        console.log(`Polling attempt ${attempts}/${maxAttempts}. Status: ${status ? status.status : 'unknown'}`);
+        setTimeout(poll, 10000); // Poll every 10 seconds
+      }
+    };
+    
+    // Start polling
+    await poll();
+  };
+
   const handleAnalyze = async (retryCount = 0) => {
     if (!repoUrl) {
       toast({
@@ -58,7 +142,45 @@ export default function VisualizePage() {
       });
       return;
     }
+    
+    // First check if analysis is already in progress or complete
     setIsLoading(true);
+    const existingStatus = await checkExistingResults();
+    
+    if (existingStatus) {
+      console.log("Found existing analysis status:", existingStatus);
+      
+      if (existingStatus.status === 'completed' && existingStatus.data) {
+        // We already have results - use them
+        const normalizedData = {
+          nodes: existingStatus.data.nodes || [],
+          links: existingStatus.data.links || [],
+          metadata: existingStatus.data.metadata || {}
+        };
+        
+        console.log("Using existing callgraph data:", normalizedData);
+        setCallgraphData(normalizedData);
+        
+        toast({
+          title: "Analysis already complete",
+          description: "Using existing analysis results for " + repoUrl,
+        });
+        
+        setIsLoading(false);
+        return;
+      } else if (existingStatus.status === 'processing') {
+        // Analysis is still in progress - start polling
+        toast({
+          title: "Analysis in progress",
+          description: "Analysis is already running. Checking for results...",
+        });
+        
+        pollForResults();
+        return;
+      }
+    }
+    
+    // No existing analysis or it failed - start a new one
     clearCallgraphData();
     try {
       const controller = new AbortController();
@@ -127,19 +249,28 @@ export default function VisualizePage() {
         setIsLoading(false);
         return;
       }
-      setCallgraphData(data);
+      // Normalize the data structure to ensure it's in the correct format for our components
+      // Some API responses include data directly, others wrap it in a data property
+      const normalizedData = {
+        nodes: data.nodes || data.data?.nodes || [],
+        links: data.links || data.data?.links || [],
+        metadata: data.metadata || data.data?.metadata || {}
+      };
+      
+      console.log("Normalized callgraph data:", normalizedData);
+      setCallgraphData(normalizedData);
       
       const apiResponse = data; 
       const newMetrics = {
-        functionCount: apiResponse.data?.nodes?.length || 0,
-        dependencyCount: apiResponse.data?.links?.length || 0,
-        avgComplexity: apiResponse.metadata?.metrics?.avg_complexity || "N/A",
+        functionCount: normalizedData.nodes.length || 0,
+        dependencyCount: normalizedData.links.length || 0,
+        avgComplexity: normalizedData.metadata?.metrics?.avg_complexity || "N/A",
         mostComplexFunction:
-          apiResponse.metadata?.metrics?.most_complex_function || null,
+          normalizedData.metadata?.metrics?.most_complex_function || null,
         
-        complexity: apiResponse.metadata?.metrics?.complexity || "N/A",
-        cohesion: apiResponse.metadata?.metrics?.cohesion || "N/A",
-        coupling: apiResponse.metadata?.metrics?.coupling || "N/A",
+        complexity: normalizedData.metadata?.metrics?.complexity || "N/A",
+        cohesion: normalizedData.metadata?.metrics?.cohesion || "N/A",
+        coupling: normalizedData.metadata?.metrics?.coupling || "N/A",
       };
       setMetrics(newMetrics);
       toast({
@@ -442,10 +573,7 @@ export default function VisualizePage() {
           <Skeleton className="h-12 w-1/2 mb-4" />
           <Skeleton className="h-64 w-full" />
         </div>
-      ) : callgraphData &&
-        callgraphData.data &&
-        callgraphData.data.nodes &&
-        callgraphData.data.nodes.length > 0 ? (
+      ) : callgraphData && callgraphData.nodes && callgraphData.nodes.length > 0 ? (
         <Tabs defaultValue="visualization" className="mt-4">
           <TabsList>
             <TabsTrigger value="visualization">Interactive Analysis</TabsTrigger>
@@ -455,7 +583,7 @@ export default function VisualizePage() {
           <TabsContent value="visualization" className="mt-4">
             <div className="border rounded-lg overflow-hidden h-[800px]">
               <VisualizationTabs 
-                data={callgraphData.data} 
+                data={callgraphData} 
                 repositoryId={repoUrl}
               />
             </div>
@@ -534,9 +662,9 @@ export default function VisualizePage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {callgraphData.data.nodes &&
-                  callgraphData.data.nodes.length > 0 ? (
-                    callgraphData.data.nodes
+                  {callgraphData.nodes &&
+                  callgraphData.nodes.length > 0 ? (
+                    callgraphData.nodes
                       .sort(
                         (a: CallgraphNode, b: CallgraphNode) =>
                           (b.complexity || 0) - (a.complexity || 0),

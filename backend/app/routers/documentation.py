@@ -5,7 +5,27 @@ import asyncio
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, Path
+from fastapi import APIRouter, HTTPException
+from ..services.documentation_service import DocumentationService
+from ..services.codebase_data_service import CodebaseDataService
+
+router = APIRouter(prefix="/documentation")
+
+@router.get("/by-callgraph/{callgraph_id}")
+async def get_docs_by_callgraph(callgraph_id: str):
+    docs = await CodebaseDataService().get_documentation(callgraph_id)
+    return docs if docs else {"status": "not_generated"}, HTTPException
+from ..services.documentation_service import DocumentationService
+from ..services.codebase_data_service import CodebaseDataService
+
+router = APIRouter(prefix="/documentation")
+
+@router.get("/{callgraph_id}")
+async def get_documentation(callgraph_id: str):
+    docs = await CodebaseDataService().get_documentation(callgraph_id)
+    if not docs:
+        raise HTTPException(status_code=404, detail="Documentation not found")
+    return docs, Depends, HTTPException, BackgroundTasks, Query, Path
 from fastapi.responses import FileResponse, JSONResponse
 
 from ..models.documentation import (

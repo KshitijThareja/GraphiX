@@ -1,10 +1,12 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import CallgraphVisualization from "./callgraph-visualization";
 import DocumentationPanel from "./documentation/DocumentationPanel";
 import ChatInterface from "./chat/ChatInterface";
 import { cn } from "@/lib/utils";
+// Import CallgraphVisualization and required types
+import CallgraphVisualization, { CallgraphNode } from "./callgraph-visualization";
+import { CallgraphLink } from "@/lib/visualization/attributes";
 
 interface VisualizationTabsProps {
   data: {
@@ -25,16 +27,29 @@ export default function VisualizationTabs({
   className,
 }: VisualizationTabsProps) {
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("callgraph");
 
   // Function to handle node highlighting from the chat
   const handleHighlightNode = (nodeId: string) => {
     setHighlightedNodeId(nodeId);
     
     // Ensure the callgraph tab is active when highlighting a node
-    const callgraphTab = document.querySelector('[data-state="inactive"][data-value="callgraph"]') as HTMLElement;
-    if (callgraphTab) {
-      callgraphTab.click();
-    }
+    setActiveTab("callgraph");
+  };
+  
+  // Function to handle node selection from the callgraph
+  const handleNodeSelect = (nodeId: string) => {
+    setSelectedNodeId(nodeId);
+    
+    // Switch to the documentation tab when a node is selected in the callgraph
+    setActiveTab("documentation");
+  };
+  
+  // Function to handle node selection from the documentation panel
+  const handleDocNodeSelect = (nodeId: string) => {
+    setHighlightedNodeId(nodeId);
+    setActiveTab("callgraph");
   };
 
   // Enhance the callgraph data with highlighting information
@@ -43,11 +58,16 @@ export default function VisualizationTabs({
     nodes: data.nodes.map((node) => ({
       ...node,
       highlighted: node.id === highlightedNodeId,
-    })),
+      selected: node.id === selectedNodeId,
+    })) as CallgraphNode[],
   };
 
   return (
-    <Tabs defaultValue="callgraph" className={cn("flex flex-col h-full", className)}>
+    <Tabs 
+      value={activeTab} 
+      onValueChange={setActiveTab} 
+      className={cn("flex flex-col h-full", className)}
+    >
       <TabsList className="mb-4">
         <TabsTrigger value="callgraph">Callgraph</TabsTrigger>
         <TabsTrigger value="documentation">Documentation</TabsTrigger>
@@ -58,6 +78,7 @@ export default function VisualizationTabs({
         <CallgraphVisualization 
           data={enhancedData} 
           className="h-full"
+          onNodeClick={handleNodeSelect}
         />
       </TabsContent>
       
@@ -65,6 +86,8 @@ export default function VisualizationTabs({
         <DocumentationPanel 
           repositoryId={repositoryId}
           className="h-full"
+          selectedNodeId={selectedNodeId || undefined}
+          onNodeSelect={handleDocNodeSelect}
         />
       </TabsContent>
       

@@ -83,6 +83,21 @@ export const useCallgraphAnalysis = () => {
           setStatusLog(backendStatusLog);
           setStatus(backendStatusLog[backendStatusLog.length - 1]);
         }
+        // Handle different status responses from the server
+        if (responseData.status === "processing") {
+          console.log("Analysis is still processing on the backend", responseData);
+          // Set a special status for processing
+          setStatus("Processing - analysis is still running on the backend");
+          setStatusLog(prev => [
+            ...prev, 
+            "The analysis is taking longer than expected but is still running.",
+            "You can check back later by refreshing the page."
+          ]);
+          // We don't want to show an error, but we do want to let the user know it's not done yet
+          setIsLoading(false);
+          return;
+        }
+        
         if (!response.ok || responseData.status === "error") {
           const errorMessage =
             responseData.message ||
@@ -93,7 +108,9 @@ export const useCallgraphAnalysis = () => {
           setIsLoading(false);
           return;
         }
+
         if (responseData.status === "completed" && responseData.data) {
+          // Successfully received complete analysis
           setResult({
             nodes: responseData.data.nodes,
             links: responseData.data.links,
@@ -106,7 +123,18 @@ export const useCallgraphAnalysis = () => {
               `Analysis complete with warning: ${responseData.data.metadata.warning}`,
             );
           }
+        } else if (responseData.data?.metadata?.status === "processing") {
+          // Another way the backend might indicate processing status
+          setStatus("Processing - analysis is still running on the backend");
+          setStatusLog(prev => [
+            ...prev, 
+            "The analysis is running on the backend and taking longer than expected.",
+            "Please check back in a few minutes by refreshing the page."
+          ]);
+          setIsLoading(false);
         } else {
+          // Unexpected response format
+          console.warn("Unexpected response structure:", responseData);
           setError("Received unexpected response structure from server.");
           setStatus("Error");
         }
