@@ -260,3 +260,9 @@ dist
 venv
 
 backend/stash/
+
+logs
+migrate_repository_ids.py
+query_mongo.py
+initialize_mongo_collection.py
+bash.exe.stackdump

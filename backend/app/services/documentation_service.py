@@ -46,8 +46,9 @@ class DocumentationService:
     to extract docstrings, function signatures, and other relevant documentation.
     """
     
-    def __init__(self, framework_hint: str = "generic"):
+    def __init__(self, framework_hint: str = "generic", repository_id: Optional[str] = None):
         """
+        self.repository_id = repository_id
         Initialize the DocumentationService.
         
         Args:
@@ -88,7 +89,8 @@ class DocumentationService:
             Dict containing documentation data
         """
         start_time = datetime.now()
-        self.repository_id = repository_id or os.path.basename(repo_path)
+        from ..utils.repository import normalize_repository_id
+        self.repository_id = repository_id or normalize_repository_id(repo_path)
         logger.info(f"Starting documentation analysis for repository: {self.repository_id}")
         
         # First try to get existing callgraph data
@@ -480,27 +482,28 @@ class DocumentationService:
         return context_elements[:5]
     
     async def _generate_documentation_for_node(self, node: Dict[str, Any], context_elements: List[Dict[str, Any]]) -> Optional[Dict[str, str]]:
-        """
-        Generate documentation for a single node using the LLM.
+        """Generate documentation for a single node using the LLM."""
+        # Ensure node has repository_id for proper MongoDB storage
+        if 'repository_id' not in node and self.repository_id:
+            node['repository_id'] = self.repository_id
+            logger.info(f"DocumentationService: Added repository_id {self.repository_id} to node {node.get('id')}")
+        elif 'repository_id' not in node and not self.repository_id:
+            logger.warning(f"DocumentationService: Cannot add repository_id to node {node.get('id')} - repository_id is not set in DocumentationService")
+        else:
+            logger.debug(f"DocumentationService: Node {node.get('id')} already has repository_id {node.get('repository_id')}")
         
-        Args:
-            node: The node to generate documentation for
-            context_elements: Related elements that provide context
-            
-        Returns:
-            Dictionary with docstring and signature, or None if generation failed
-        """
+        # Generate documentation using LLM
         try:
-            # Prepare context elements in the format expected by LLMDocGeneratorService
-            formatted_context = []
-            for ctx in context_elements:
-                formatted_context.append(ctx.get('node', {}))
-            
-            # Generate documentation using LLMDocGeneratorService
-            return await self.llm_doc_generator.generate_documentation_for_node(node, formatted_context)
-            
+            logger.info(f"DocumentationService: Calling LLMDocGeneratorService for node {node.get('id')} with repository_id {node.get('repository_id')}")
+            documentation = await self.llm_doc_generator.generate_documentation_for_node(node, context_elements)
+            if documentation:
+                logger.info(f"DocumentationService: Successfully generated documentation for node {node.get('id')}")
+                return documentation
+            else:
+                logger.warning(f"DocumentationService: Failed to generate documentation for node {node.get('id')}")
+                return None
         except Exception as e:
-            logger.error(f"Error generating documentation for node {node.get('id')}: {e}")
+            logger.error(f"DocumentationService: Error generating documentation for node {node.get('id')}: {e}", exc_info=True)
             return None
     
     async def _extract_documentation_from_callgraph(self, callgraph_result: Dict) -> None:

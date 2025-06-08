@@ -118,7 +118,7 @@ async def stream_callgraph(
             else:
                 generator = EnhancedCallgraphGenerator()
                 yield f"data: {json.dumps({'status': 'Starting enhanced analysis...'})}\n\n"
-            analysis_task = asyncio.create_task(
+                analysis_task = asyncio.create_task(
                 generator.analyze_repository(repo_url, clone=True)
             )
             while not analysis_task.done():
@@ -154,11 +154,18 @@ async def generate_callgraph(
     db: Session = Depends(get_db),
     background_tasks: BackgroundTasks = None,
 ):
+    status_log = [] # Initialize status_log here
+    status_log.append(f"Received request for {request_model.repo_url}")
+    status_log = [] # Initialize status_log here
+    status_log.append(f"Received request for {request_model.repo_url}")
+
     try:
         start_time = time.time()
         repo_url = str(request_model.repo_url)
         is_remote = not os.path.exists(repo_url)
-        repository_id = repo_url.split("/")[-1] if "/" in repo_url else repo_url
+        # Use the normalize_repository_id function for consistent repository ID generation
+        from ..utils.repository import normalize_repository_id
+        repository_id = normalize_repository_id(repo_url)
         
         # Determine the type of generator to use
         if request_model.research_grade:
@@ -595,7 +602,9 @@ async def generate_documentation(
 ):
     try:
         repo_url = str(request.repo_url)
-        repository_id = repo_url.split("/")[-1] if "/" in repo_url else repo_url
+        # Use the normalize_repository_id function for consistent repository ID generation
+        from ..utils.repository import normalize_repository_id
+        repository_id = normalize_repository_id(repo_url)
         is_remote = not os.path.exists(repo_url)
         
         # Create documentation ID

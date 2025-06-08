@@ -14,6 +14,7 @@ from functools import lru_cache
 import google.generativeai as genai
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 from app.models.base import settings
+from app.services.database import get_database
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +162,7 @@ class LLMDocGeneratorService:
         """
         self.model = None
         gemini_api_key = None
+        self.db = None  # MongoDB database connection, initialized when needed
 
         # Initialize helper components
         self.cache = ResponseCache(max_size=200)  # Cache up to 200 responses
@@ -217,6 +219,9 @@ class LLMDocGeneratorService:
         """
         Generates documentation (docstring and signature) for a given code node
         using the configured LLM. Implements caching, rate limiting, and error handling.
+        
+        First checks MongoDB for existing documentation, then falls back to in-memory cache,
+        and finally generates new documentation using the LLM if needed.
 
         Args:
             node_data: Dictionary containing details of the node to document.
@@ -232,9 +237,33 @@ class LLMDocGeneratorService:
 
         # Create a cache key based on node data and context elements
         node_id = node_data.get('id', '')
+        repository_id = node_data.get('repository_id', '')
         cache_key = self._generate_cache_key(node_data, context_elements)
+        
+        # Initialize database connection if needed
+        try:
+            await self._initialize_db()
+        except Exception as e:
+            logger.error(f"LLMDocGeneratorService: Failed to initialize database: {e}")
+            # Continue with in-memory cache only
+        
+        # Check MongoDB first if database is initialized and we have repository_id and node_id
+        if self.db is not None and repository_id and node_id:
+            try:
+                doc = await self.db['node_documentation'].find_one({
+                    'node_id': node_id,
+                    'repository_id': repository_id
+                })
+                
+                if doc and 'documentation' in doc:
+                    logger.info(f"LLMDocGeneratorService: Using documentation from MongoDB for node: {node_id}")
+                    print(f"--- DEBUG: LLMDocGeneratorService.generate_documentation_for_node RETURNING MongoDB result ---") # DEBUG PRINT
+                    return doc['documentation']
+            except Exception as e:
+                logger.error(f"LLMDocGeneratorService: Error retrieving documentation from MongoDB: {e}")
+                # Continue with in-memory cache
 
-        # Check cache first if enabled
+        # Check in-memory cache if enabled
         if self.config.get('cache_enabled', True):
             cached_result = self.cache.get(cache_key)
             if cached_result:
@@ -277,7 +306,51 @@ class LLMDocGeneratorService:
                 if self.config.get('cache_enabled', True):
                     self.cache.set(cache_key, parsed_docs)
                     logger.debug(f"LLMDocGeneratorService: Cached documentation for node: {node_id}")
-            
+                
+                # Store in MongoDB if database is initialized and we have repository_id and node_id
+                if self.db is not None and repository_id and node_id:
+                    try:
+                        # Check if the node_documentation collection exists
+                        collections = await self.db.list_collection_names()
+                        if 'node_documentation' not in collections:
+                            logger.warning(f"LLMDocGeneratorService: node_documentation collection does not exist. Creating it now.")
+                        
+                        # Log the attempt to store documentation
+                        logger.info(f"LLMDocGeneratorService: Attempting to store documentation in MongoDB for node: {node_id}, repository: {repository_id}")
+                        
+                        result = await self.db['node_documentation'].update_one(
+                            {
+                                'node_id': node_id,
+                                'repository_id': repository_id
+                            },
+                            {
+                                '$set': {
+                                    'node_id': node_id,
+                                    'repository_id': repository_id,
+                                    'documentation': parsed_docs,
+                                    'generated_at': datetime.now()
+                                }
+                            },
+                            upsert=True
+                        )
+                        
+                        # Log detailed information about the result
+                        if result.matched_count > 0:
+                            logger.info(f"LLMDocGeneratorService: Updated existing documentation in MongoDB for node: {node_id}")
+                        elif result.upserted_id is not None:
+                            logger.info(f"LLMDocGeneratorService: Inserted new documentation in MongoDB for node: {node_id}, upserted_id: {result.upserted_id}")
+                        else:
+                            logger.warning(f"LLMDocGeneratorService: MongoDB update_one operation did not match or insert any documents for node: {node_id}")
+                    except Exception as e:
+                        logger.error(f"LLMDocGeneratorService: Error storing documentation in MongoDB: {e}", exc_info=True)
+                        # Continue without MongoDB storage
+                else:
+                    if self.db is None:
+                        logger.warning(f"LLMDocGeneratorService: Cannot store documentation in MongoDB for node {node_id} - database connection not initialized")
+                    elif not repository_id:
+                        logger.warning(f"LLMDocGeneratorService: Cannot store documentation in MongoDB for node {node_id} - missing repository_id")
+                    elif not node_id:
+                        logger.warning("LLMDocGeneratorService: Cannot store documentation in MongoDB - missing node_id")
             print(f"--- DEBUG: LLMDocGeneratorService.generate_documentation_for_node RETURNING parsed_docs: {parsed_docs is not None} ---") # DEBUG PRINT
             return parsed_docs
                 
@@ -292,6 +365,45 @@ class LLMDocGeneratorService:
             print(f"--- DEBUG: LLMDocGeneratorService.generate_documentation_for_node ERRORED: {e} ---") # DEBUG PRINT
             return None
             
+    async def _initialize_db(self):
+        """Initialize the MongoDB database connection if not already initialized."""
+        if self.db is None:
+            try:
+                self.db = await get_database()
+                logger.info("LLMDocGeneratorService: MongoDB database connection initialized")
+                
+                # Check if node_documentation collection exists
+                collections = await self.db.list_collection_names()
+                if 'node_documentation' not in collections:
+                    logger.warning("LLMDocGeneratorService: node_documentation collection does not exist. It will be created automatically.")
+                
+                # Ensure the node_documentation collection exists with proper indexes
+                try:
+                    await self.db['node_documentation'].create_index(
+                        [('node_id', 1), ('repository_id', 1)],
+                        unique=True
+                    )
+                    logger.info("LLMDocGeneratorService: Created index on node_documentation collection")
+                except Exception as e:
+                    # This is expected if the index already exists
+                    if "IndexKeySpecsConflict" in str(e):
+                        logger.warning("LLMDocGeneratorService: IndexKeySpecsConflict detected. Attempting to drop and recreate index.")
+                        try:
+                            await self.db['node_documentation'].drop_index('node_id_1_repository_id_1') # Assuming this is the default name
+                            logger.info("LLMDocGeneratorService: Successfully dropped conflicting index.")
+                            await self.db['node_documentation'].create_index(
+                                [('node_id', 1), ('repository_id', 1)],
+                                unique=True
+                            )
+                            logger.info("LLMDocGeneratorService: Successfully recreated unique index on node_documentation collection.")
+                        except Exception as drop_e:
+                            logger.error(f"LLMDocGeneratorService: Failed to drop or recreate index: {drop_e}")
+                    else:
+                        logger.error(f"LLMDocGeneratorService: Failed to create index on node_documentation collection: {e}")
+            except Exception as e:
+                logger.error(f"LLMDocGeneratorService: Failed to initialize MongoDB connection: {e}", exc_info=True)
+                self.db = None
+    
     def _generate_cache_key(self, node_data: Dict[str, Any], context_elements: List[Dict[str, Any]]) -> str:
         """Generate a unique cache key for the documentation request."""
         node_id = node_data.get('id', '')
