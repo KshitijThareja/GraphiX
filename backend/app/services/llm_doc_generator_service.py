@@ -828,7 +828,7 @@ class LLMDocGeneratorService:
                 logger.info("LLMDocGeneratorService: Successfully parsed response using code block extraction")
                 return code_block_result
 
-            # Strategy 3: Look for explicit section markers
+            # Strategy 3: Look for explicitly section markers
             section_result = self._try_parse_sections(response_text)
             if section_result:
                 logger.info("LLMDocGeneratorService: Successfully parsed response using section markers")
@@ -1145,8 +1145,8 @@ if __name__ == '__main__':
     # You'd need a proper LLM client and configuration for real use.
     
     # Configure logging for standalone testing
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # logging.basicConfig(level=logging.DEBUG,
+    #                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     test_node = {
         'id': 'module_a.ClassB.method_c',

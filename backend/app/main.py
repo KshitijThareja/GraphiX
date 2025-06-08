@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from .models.user import User
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 Base.metadata.create_all(bind=engine)
 app = FastAPI(

@@ -786,10 +786,10 @@ async def get_callgraph_status(
         # tracking system for in-progress analyses
         # For now, we'll just assume it's processing if we didn't find completed results
         
-        logger.info(f"No completed analysis found for {repo_url}, assuming it's still processing")
+        logger.info(f"No completed analysis found for {repo_url}")
         return {
-            "status": "processing",
-            "message": "Analysis is still in progress"
+            "status": "not_found",
+            "message": "No completed analysis found for this repository."
         }
         
     except Exception as e:

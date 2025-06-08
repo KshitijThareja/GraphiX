@@ -40,7 +40,7 @@ def rate_limited(max_per_minute: int):
     return decorator
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
@@ -127,6 +127,7 @@ class CallgraphGenerator:
             )
             os.makedirs(os.path.dirname(temp_dir), exist_ok=True)
 
+            import subprocess
             cmd = [
                 "git",
                 "clone",
@@ -135,24 +136,29 @@ class CallgraphGenerator:
                 repo_url_str,  # Use string form for command
                 temp_dir,
             ]
-            process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            while True:
-                output = await process.stderr.readline()
-                if process.returncode is not None:
-                    break
-                if output:
-                    line = output.decode().strip()
-                    logger.debug(f"git clone: {line}")
-            await process.wait()
-            if process.returncode != 0:
-                error_output = await process.stderr.read()
-                raise Exception(
-                    f"Git clone failed: {error_output.decode().strip()}"
+            loop = asyncio.get_running_loop()
+            try:
+                # Run the blocking subprocess call in a separate thread
+                process = await loop.run_in_executor(
+                    None,  # Use the default ThreadPoolExecutor
+                    lambda: subprocess.run(
+                        cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        check=True, # Raise CalledProcessError for non-zero exit codes
+                        timeout=timeout # Apply timeout here
+                    )
                 )
+                if process.returncode != 0:
+                    raise Exception(
+                        f"Git clone failed: {process.stderr.decode().strip()}"
+                    )
+            except subprocess.CalledProcessError as e:
+                raise Exception(f"Git clone failed: {e.stderr.decode().strip()}")
+            except subprocess.TimeoutExpired:
+                raise Exception(f"Git clone timed out after {timeout} seconds.")
+            except Exception as e:
+                raise Exception(f"Error in clone operation: {str(e)}")
             if not os.path.exists(os.path.join(temp_dir, ".git")):
                 raise Exception("Repository was not cloned successfully")
             return temp_dir
