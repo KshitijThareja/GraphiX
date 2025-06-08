@@ -351,6 +351,33 @@ class LLMDocGeneratorService:
                         logger.warning(f"LLMDocGeneratorService: Cannot store documentation in MongoDB for node {node_id} - missing repository_id")
                     elif not node_id:
                         logger.warning("LLMDocGeneratorService: Cannot store documentation in MongoDB - missing node_id")
+
+                # Also store to a local JSON file as requested
+                try:
+                    output_file = 'generated_docs.json'
+                    # Read existing data if file exists, otherwise start with an empty list
+                    existing_data = []
+                    if os.path.exists(output_file):
+                        with open(output_file, 'r') as f:
+                            try:
+                                existing_data = json.load(f)
+                            except json.JSONDecodeError:
+                                existing_data = [] # Handle empty or invalid JSON
+
+                    # Append new data
+                    existing_data.append({
+                        'node_id': node_id,
+                        'repository_id': repository_id,
+                        'documentation': parsed_docs,
+                        'generated_at': datetime.now().isoformat()
+                    })
+
+                    # Write back the entire list
+                    with open(output_file, 'w') as f:
+                        json.dump(existing_data, f, indent=4)
+                    logger.info(f"LLMDocGeneratorService: Stored documentation for node {node_id} in {output_file}")
+                except Exception as json_e:
+                    logger.error(f"LLMDocGeneratorService: Error storing documentation to JSON file: {json_e}", exc_info=True)
             print(f"--- DEBUG: LLMDocGeneratorService.generate_documentation_for_node RETURNING parsed_docs: {parsed_docs is not None} ---") # DEBUG PRINT
             return parsed_docs
                 

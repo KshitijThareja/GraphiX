@@ -1,0 +1,713 @@
+[
+    {
+        "node_id": "manage",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "This module serves as the entry point for Django projects' command-line utility. It provides a central location to execute management commands. The primary function is to parse command-line arguments and dispatch them to the appropriate command handlers.\n\nKey components include `execute_from_command_line`, which is the main function for running commands, and the handling of `ImportError` which is raised when a required module cannot be imported.\n\nFor new users, the most important function is `execute_from_command_line`.",
+            "signature": "manage"
+        },
+        "generated_at": "2025-06-08T17:54:19.181793"
+    },
+    {
+        "node_id": "<ComplexCall>.setdefault",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Sets a key in the dictionary to a default value if the key is not already present.  If the key exists, the existing value is returned.  This is a standard dictionary method, likely used to ensure a value exists for a given key, preventing `KeyError` exceptions.  The context suggests this is used within a web application (panorbit.wsgi) or management script (manage).",
+            "signature": "setdefault(key, default=None)"
+        },
+        "generated_at": "2025-06-08T17:54:20.365279"
+    },
+    {
+        "node_id": "<unknown_module>.ImportError",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "The `ImportError` class is a built-in exception raised when an `import` statement fails to find the module or when there's an issue importing a specific name from a module. This class is a subclass of `Exception` and is commonly encountered when dealing with module management and dependency resolution. It signals that a required module is either not installed, not accessible in the Python path, or contains errors preventing its successful import.\n\nThis exception is crucial for handling scenarios where external dependencies are missing or misconfigured, allowing programs to gracefully handle such situations instead of crashing.\n\nExample:\n```python\n try:\n  import non_existent_module\n except ImportError as e:\n  print(f\"Import failed: {e}\")\n```",
+            "signature": "ImportError"
+        },
+        "generated_at": "2025-06-08T17:54:22.152077"
+    },
+    {
+        "node_id": "<unknown_module>.execute_from_command_line",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Executes a Django project from the command line. This function is the entry point for running Django management commands.\n\nArgs:\n    argv: A list of command-line arguments, typically `sys.argv`.\n\nReturns:\n    None\n\nRaises:\n    SystemExit: If an error occurs during command execution, the function may raise `SystemExit` to indicate a failure.",
+            "signature": "execute_from_command_line(argv: list) -> None"
+        },
+        "generated_at": "2025-06-08T17:54:23.377666"
+    },
+    {
+        "node_id": "panorbit.settings",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "This module provides settings and configuration management for the Panorbit application. It likely defines constants, default values, and potentially loads settings from configuration files or environment variables. Key components include functions for determining paths and accessing configuration data.\n\nThis module is designed to centralize application settings, making them easily accessible and configurable throughout the project. It likely uses functions related to path manipulation (e.g., `dirname`, `abspath`, `join`) to locate configuration files or data directories.",
+            "signature": "panorbit.settings"
+        },
+        "generated_at": "2025-06-08T17:54:24.899204"
+    },
+    {
+        "node_id": "<ComplexCall>.dirname",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Returns the directory name of a file path. This function is likely used to extract the directory component from a given file path string.\n\nArgs:\n    path: The file path string.\n\nReturns:\n    The directory name as a string.\n\nRaises:\n    TypeError: If the input `path` is not a string.",
+            "signature": "dirname(path: str) -> str"
+        },
+        "generated_at": "2025-06-08T17:54:26.194120"
+    },
+    {
+        "node_id": "<ComplexCall>.abspath",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Returns the absolute path of a file or directory. This function likely resolves relative paths to their absolute counterparts, taking into account the current working directory.  It's a common utility for file system operations.",
+            "signature": "abspath(path: str) -> str"
+        },
+        "generated_at": "2025-06-08T17:54:27.267385"
+    },
+    {
+        "node_id": "<ComplexCall>.join",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Joins a sequence of strings into a single string, using the string on which it's called as a separator.\n\nArgs:\n    iterable: An iterable of strings to join.\n\nReturns:\n    A string that is the concatenation of the strings in the iterable, separated by the calling string.\n\nRaises:\n    TypeError: If any element in the iterable is not a string.",
+            "signature": "join(iterable: Iterable[str]) -> str"
+        },
+        "generated_at": "2025-06-08T17:54:28.748206"
+    },
+    {
+        "node_id": "panorbit.urls",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "This module defines the URL patterns for the `panorbit` application using Django's URL configuration system. It centralizes the routing of web requests to the appropriate views within the application.\n\nKey components include the `urlpatterns` variable, which is a list of `path` objects. These objects map URL paths to view functions or other URL configurations, enabling the application to handle different requests.\n\nFor a new user, the primary interaction point is likely to be modifying the `urlpatterns` list to add or adjust the application's routing behavior.",
+            "signature": "panorbit.urls"
+        },
+        "generated_at": "2025-06-08T17:54:30.139638"
+    },
+    {
+        "node_id": "<unknown_module>.url",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "This function likely handles URL-related operations, potentially within the context of a web application or API.  It's related to other URL modules (world.urls, panorbit.urls), suggesting it might be part of a larger system for managing and routing URLs.\n\nArgs:\n    No specific parameters are known from the context.\n\nReturns:\n    The function likely returns a URL string or a similar representation of a URL, or possibly None if the operation fails.\n\nRaises:\n    No specific exceptions are known from the context, but it could potentially raise exceptions related to URL parsing, network issues, or invalid input, depending on its implementation.",
+            "signature": "url() -> str | None"
+        },
+        "generated_at": "2025-06-08T17:54:31.781773"
+    },
+    {
+        "node_id": "django.include",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Includes another URL configuration module. This function allows you to nest URL patterns from other modules within your current URL configuration. This is crucial for modularizing your application's routing logic, especially when dealing with large projects or reusable components. It effectively 'mounts' another URL configuration at a specific path prefix.\n\nArgs:\n    arg1: The URL configuration module (e.g., `panorbit.urls`) or a list of URL patterns to include.  This can also be a tuple containing the URL configuration module and a namespace.\n    namespace: An optional namespace for the included URL configuration.  This helps to avoid naming conflicts when including multiple URL configurations.\n\nReturns:\n    A list of URL patterns, incorporating the included patterns.\n\nRaises:\n    TypeError: If the provided argument is not a valid URL configuration or a list of URL patterns.",
+            "signature": "include(arg1, namespace=None)"
+        },
+        "generated_at": "2025-06-08T17:54:33.632871"
+    },
+    {
+        "node_id": "panorbit.wsgi",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "This module provides the WSGI application for the Panorbit project. It serves as the entry point for handling web requests and integrates with a WSGI server.  It likely leverages a WSGI application factory function to create the application instance.\n\nKey components for a new user are likely the `get_wsgi_application` function (if exposed) which is used to retrieve the WSGI application object, and any configuration mechanisms used to customize the application's behavior.\n\nThis module likely interacts with other parts of the Panorbit project to handle requests and responses.",
+            "signature": "panorbit.wsgi"
+        },
+        "generated_at": "2025-06-08T17:54:35.070761"
+    },
+    {
+        "node_id": "<unknown_module>.get_wsgi_application",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Returns a WSGI application instance for the Panorbit project. This function likely serves as the entry point for deploying the Panorbit application using a WSGI server like Gunicorn or uWSGI.\n\nReturns:\n    A WSGI application object. This object is callable and handles HTTP requests and responses for the Panorbit application.",
+            "signature": "get_wsgi_application() -> WSGI application"
+        },
+        "generated_at": "2025-06-08T17:54:36.185315"
+    },
+    {
+        "node_id": "panorbit.__init__",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "This module provides functionality related to PanOrbit, likely dealing with database interactions and potentially MySQL. It seems to contain a class, `install_as_MySQLdb`, which suggests a focus on integrating with or emulating MySQL behavior.  A new user should likely start by exploring the `install_as_MySQLdb` class to understand how this module interacts with database systems.",
+            "signature": "panorbit"
+        },
+        "generated_at": "2025-06-08T17:54:37.333215"
+    },
+    {
+        "node_id": "<UnknownClass>.install_as_MySQLdb",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "The `UnknownClass` class, when used with the `panorbit` module, likely provides functionality related to installing something as MySQLdb. The exact nature of what is being installed is unclear without more context, but the class's name suggests a connection to database interaction. This class is likely designed to be used internally within the `panorbit` module and may not be intended for direct instantiation by users.\n\nThis class is likely involved in setting up or configuring a component to work with a MySQL database, possibly by patching or modifying existing database connection libraries.\n\nKey methods and attributes are not known without further context, but users should be aware that direct interaction with this class might not be necessary or recommended, and that the `panorbit` module's higher-level functions are likely the intended interface.",
+            "signature": "UnknownClass()"
+        },
+        "generated_at": "2025-06-08T17:54:39.167505"
+    },
+    {
+        "node_id": "world.admin",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "The `world.admin` module provides administrative functionalities for managing the world simulation. It likely contains tools for registering and managing administrative tasks, potentially including user management, configuration, and monitoring.  The primary entry point for interacting with this module is likely the `register` function, which allows the registration of administrative commands or tasks.",
+            "signature": "world.admin"
+        },
+        "generated_at": "2025-06-08T17:54:40.946021"
+    },
+    {
+        "node_id": "<ComplexCall>.register",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Registers a new function or object within the system, likely making it accessible through a global or administrative interface. This function is likely related to the `world.admin` module, suggesting administrative or system-level functionality.\n\nArgs:\n    item: The function or object to be registered. The specific type is not defined, but it's the entity to be made available.\n\nReturns:\n    Indicates the success or failure of the registration. The exact return type is not specified, but it likely provides feedback on the operation.\n\nRaises:\n    Exception:  Potentially raises an exception if the registration fails, such as if the item is invalid or if a conflict exists with an existing registration.",
+            "signature": "register(item)"
+        },
+        "generated_at": "2025-06-08T17:54:42.934123"
+    },
+    {
+        "node_id": "world.apps",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "This module defines the Django application configuration for the 'world' app. It primarily handles the app's setup and provides a central point for configuration.  Key components include the `WorldConfig` class, which manages the app's metadata and initialization.  This module is essential for integrating the 'world' app into a Django project.\n\nKey Classes:\n\n*   `WorldConfig`:  The main configuration class for the 'world' app.  It defines the app's name, label, and other settings.\n\nThis module doesn't expose any functions directly, but the `WorldConfig` class is the primary entry point for interacting with the app's configuration.",
+            "signature": "world.apps"
+        },
+        "generated_at": "2025-06-08T17:54:45.250327"
+    },
+    {
+        "node_id": "world.apps.WorldConfig",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Configuration class for the 'world' Django app. Inherits from `AppConfig` and provides metadata about the app.  It's used to configure the app and its related settings within the Django project.  This class is essential for Django to discover and manage the app's models, templates, and other resources.\n\nThis class is automatically discovered and instantiated by Django during the application loading process.\n\nAttributes:\n    name (str): The full Python path to the app (e.g., 'world').\n    verbose_name (str): A human-readable name for the app, displayed in the Django admin interface.\n\nInherits from: `django.apps.AppConfig`\n\nExample:\n```python\n# In your settings.py, ensure 'world' is in INSTALLED_APPS:\nINSTALLED_APPS = [\n    # ... other apps\n    'world',\n]\n\n# Access the app's configuration (though you typically don't need to do this directly):\nfrom world.apps import WorldConfig\nconfig = WorldConfig\nprint(config.name) # Output: world\n```",
+            "signature": "WorldConfig"
+        },
+        "generated_at": "2025-06-08T17:54:47.709880"
+    },
+    {
+        "node_id": "AppConfig",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "The `AppConfig` class serves as the base configuration class for applications within the system. It's designed to be subclassed to provide specific configuration settings for different applications. It likely handles aspects like application name, version, and potentially other application-specific settings. This class is related to `WorldConfig`, suggesting a hierarchical configuration structure where application-level configurations might be managed within a broader world or system configuration. Subclasses should override attributes and methods to customize the application's behavior.\n\nThis class likely provides a central point for accessing and managing application-specific settings.\n\nExample:\n\n```python\nclass MyAppConfig(AppConfig):\n    app_name = \"My Application\"\n    version = \"1.0\"\n\nconfig = MyAppConfig()\nprint(config.app_name)\n```",
+            "signature": "AppConfig()"
+        },
+        "generated_at": "2025-06-08T17:54:49.457407"
+    },
+    {
+        "node_id": "world.search_indexes",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "This module provides functionality for managing and interacting with search indexes, likely for a game world or similar application. It likely contains classes and functions for creating, updating, and querying these indexes to efficiently find objects or entities within the game world based on various criteria (e.g., position, type, etc.).\n\nKey components for a new user would likely include:\n\n*   Classes representing different types of search indexes (e.g., spatial indexes, attribute indexes).\n*   Functions for adding, removing, and updating objects within the indexes.\n*   Functions for performing search queries based on specific criteria.\n\nThis module is designed to optimize search operations within a larger system, improving performance and responsiveness.",
+            "signature": "world.search_indexes"
+        },
+        "generated_at": "2025-06-08T17:54:51.121974"
+    },
+    {
+        "node_id": "world.search_indexes.CityIndex",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Represents a search index specifically for cities, built upon the `SearchIndex` base class. This class defines how city data is indexed for search functionality, including fields for name and other relevant attributes. It leverages specialized fields like `NgramField` for efficient text search and indexing.  It inherits from `indexes.SearchIndex` and is designed to be used with a search engine to enable searching of city-related data.\n\nKey attributes likely include fields for city name, potentially other descriptive fields, and methods to populate the index with data from city models.\n\nExample Usage:\n```python\n# Assuming you have a City model and have configured a search backend.\n# The following is a conceptual example.\n\n# Create an instance of the CityIndex (likely handled internally by the search framework).\n# Populate the index with data from your City model.\n# Perform search queries using the search backend.\n```",
+            "signature": "CityIndex()"
+        },
+        "generated_at": "2025-06-08T17:54:53.229223"
+    },
+    {
+        "node_id": "indexes.SearchIndex",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Base class for search indexes within the application. This class likely provides common functionality and structure for indexing data, allowing for efficient searching. It serves as a parent class for specific index implementations like `CountryIndex`, `CityIndex`, and `CountrylanguageIndex` (as suggested by the context).  It likely handles tasks such as defining fields to be indexed and potentially managing the indexing process itself.\n\nThis class is intended to be subclassed for specific models and search requirements.\n\nKey methods that subclasses will likely implement or override include methods for defining the indexed fields and potentially methods for updating or rebuilding the index.\n\nExample Usage (Conceptual):\n```python\n# Assuming a subclass like CountryIndex exists:\n# from .search_indexes import CountryIndex\n# country_index = CountryIndex()\n# results = country_index.search('Germany')\n# print(results)\n```",
+            "signature": "SearchIndex()"
+        },
+        "generated_at": "2025-06-08T17:54:55.236461"
+    },
+    {
+        "node_id": "indexes.Indexable",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "The `Indexable` class serves as a base class for search index classes within the `world` application. It provides a common interface and potentially shared functionality for indexing data. Subclasses like `CountrylanguageIndex`, `CountryIndex`, and `CityIndex` would inherit from this class to define their specific indexing logic.\n\nThis class likely provides methods for defining the index fields, preparing data for indexing, and potentially interacting with a search backend (e.g., Haystack, Elasticsearch).\n\nKey methods to be aware of in subclasses would include methods for defining fields and preparing data for indexing.\n\nExample usage (in a subclass):\n\n```python\nfrom .indexes import Indexable\n\nclass MyIndex(Indexable):\n    def get_model(self):\n        return MyModel  # Replace with your model\n\n    def prepare(self, obj):\n        # Prepare data for indexing\n        return {\n            'field1': obj.field1,\n            'field2': obj.field2,\n        }\n```",
+            "signature": "Indexable()"
+        },
+        "generated_at": "2025-06-08T17:54:57.305013"
+    },
+    {
+        "node_id": "<UnknownClass>.CharField",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Represents a character field, typically used within a search index to store and index text data. This class likely inherits from a base field class and provides specific functionality for handling string-based content. It's designed to be used within search index definitions to specify how text data should be indexed and searched.\n\nThis class is likely used in conjunction with other index fields (e.g., `IntegerField`, `DateField`) to define the structure of a search index.\n\nExample:\n```python\nfrom haystack import indexes\n\nclass MyIndex(indexes.SearchIndex, indexes.Indexable):\n    text = CharField(document=True, use_template=True)\n    name = CharField(model_attr='name')\n```\n\nAttributes:\n    `document`:  A boolean indicating whether this field is the main document field. Defaults to `False`.\n    `use_template`: A boolean indicating whether to use a template to generate the field's value. Defaults to `False`.\n    `model_attr`:  The name of the attribute on the model to use for this field.\n\nMethods:\n    `prepare(obj)`:  Prepares the field's value for indexing, typically by extracting it from the provided object (e.g., a model instance).",
+            "signature": "CharField()"
+        },
+        "generated_at": "2025-06-08T17:54:59.797556"
+    },
+    {
+        "node_id": "<UnknownClass>.NgramField",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "The `NgramField` class likely represents a field designed for indexing and searching using n-grams. N-grams are contiguous sequences of n items from a given sample of text or speech. This field type is commonly used for full-text search, allowing for more flexible and robust matching of search terms, even with minor variations or misspellings. It is likely used within search indexes like those for countries, cities, and languages to enable efficient searching.  This class probably inherits from a base class providing common field functionalities. Key attributes would likely include the field's name and potentially configuration related to n-gram generation (e.g., minimum and maximum n-gram lengths).  Users would interact with this field primarily through the search index definitions, specifying which fields should be indexed using n-grams.  Example usage would be within a search index definition:\n\n```python\nfrom haystack import indexes\n\nclass MyIndex(indexes.SearchIndex, indexes.Indexable):\n    text = indexes.NgramField(document=True, use_template=True)\n    # ... other fields ...\n```",
+            "signature": "NgramField()"
+        },
+        "generated_at": "2025-06-08T17:55:02.046304"
+    },
+    {
+        "node_id": "world.search_indexes.CityIndex.get_model",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Returns the model class associated with this index.  This is typically the model that the index is built upon.",
+            "signature": "get_model() -> class"
+        },
+        "generated_at": "2025-06-08T17:55:03.392077"
+    },
+    {
+        "node_id": "world.search_indexes.CityIndex.index_queryset",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Returns the queryset to be indexed by the CityIndex. This method retrieves all instances of the model associated with the index.  It leverages the `get_model` method to determine the model and then calls `.all()` on the model's objects.",
+            "signature": "index_queryset() -> QuerySet"
+        },
+        "generated_at": "2025-06-08T17:55:04.734726"
+    },
+    {
+        "node_id": "<ComplexCall>.all",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Retrieves all search indexes related to the world application. This function likely aggregates the querysets from different index classes (CountryIndex, CityIndex, CountrylanguageIndex) to provide a unified view of all indexed data.\n\nReturns:\n    A collection (likely a list or queryset) containing all indexed data across the different search indexes.",
+            "signature": "all() -> any"
+        },
+        "generated_at": "2025-06-08T17:55:06.011485"
+    },
+    {
+        "node_id": "CityIndex.get_model",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Retrieves the model associated with the CityIndex. This likely provides access to the underlying data model used for indexing city data.\n\nReturns:\n    The model class associated with the CityIndex.",
+            "signature": "get_model() -> ModelClass"
+        },
+        "generated_at": "2025-06-08T17:55:06.970211"
+    },
+    {
+        "node_id": "world.search_indexes.CountryIndex",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "The `CountryIndex` class defines a search index for country-related data, likely used for enabling search functionality on country names and related information. It inherits from `indexes.SearchIndex` and utilizes fields to store and index data for efficient searching.\n\nThis class is designed to be used with a search engine (e.g., Haystack) to allow users to search for countries based on various criteria.\n\nAttributes:\n    text (NgramField):  A field for indexing the country name using n-grams, enabling partial word matching.\n    name (CharField): A field for storing the country name.\n\nInheritance:\n    This class inherits from `indexes.SearchIndex`, which provides the core functionality for creating and managing search indexes.\n\nUsage Example:\n```python\n# Assuming you have a Country model\nfrom .models import Country\n\n# In your search_indexes.py file:\nclass CountryIndex(SearchIndex, Indexable):\n    text = NgramField(document=True, use_template=True)\n    name = CharField(model_attr='name')\n\n    def get_model(self):\n        return Country\n\n    def index_queryset(self, using=None):\n        return self.get_model().objects.all()\n```",
+            "signature": "CountryIndex"
+        },
+        "generated_at": "2025-06-08T17:55:09.701846"
+    },
+    {
+        "node_id": "world.search_indexes.CountryIndex.get_model",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Returns the model class associated with this index. This is typically the model that the index is built upon.\n\nReturns:\n    The model class.",
+            "signature": "get_model() -> type"
+        },
+        "generated_at": "2025-06-08T17:55:10.495600"
+    },
+    {
+        "node_id": "world.search_indexes.CountryIndex.index_queryset",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Returns the queryset to be indexed by the `CountryIndex`. This method is responsible for fetching the data that will be indexed. It typically retrieves all instances of the model associated with the index.\n\nReturns:\n    A queryset containing all instances of the model associated with the index.",
+            "signature": "index_queryset() -> QuerySet"
+        },
+        "generated_at": "2025-06-08T17:55:11.872644"
+    },
+    {
+        "node_id": "CountryIndex.get_model",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Retrieves the model associated with the `CountryIndex`. This function likely provides access to the underlying data model used by the index for querying and data retrieval.\n\nReturns:\n    The model class associated with the `CountryIndex`.",
+            "signature": "get_model() -> model_class"
+        },
+        "generated_at": "2025-06-08T17:55:12.830224"
+    },
+    {
+        "node_id": "world.search_indexes.CountrylanguageIndex",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "The `CountrylanguageIndex` class is a search index specifically designed for the `CountryLanguage` model (implied by the file context). It inherits from `indexes.SearchIndex` and defines fields for indexing data related to country languages, enabling efficient searching and filtering of language-related information.\n\nThis class utilizes fields like `NgramField` and `CharField` to index various attributes of the `CountryLanguage` model, such as the language name and other relevant textual data. It is crucial for enabling full-text search capabilities within the application for country language data.\n\nKey methods inherited from `SearchIndex` (e.g., `prepare`, `get_model`, `index_queryset`) are likely used to manage the indexing process, prepare data for indexing, and define the model being indexed.\n\nExample Usage:\n\n```python\n# Assuming you have a CountryLanguage model and have configured the search index.\n# You would typically not instantiate this class directly, but it would be used by the search framework.\n# The search framework would use this index to index and search the CountryLanguage model.\n```",
+            "signature": "CountrylanguageIndex()"
+        },
+        "generated_at": "2025-06-08T17:55:15.193636"
+    },
+    {
+        "node_id": "world.search_indexes.CountrylanguageIndex.get_model",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Returns the model class associated with this index.  This is typically the model that the index is built upon.\n\nArgs:\n    None\n\nReturns:\n    The model class (e.g., `Countrylanguage`).\n\nRaises:\n    TypeError: If the model cannot be determined.",
+            "signature": "get_model() -> type"
+        },
+        "generated_at": "2025-06-08T17:55:16.294317"
+    },
+    {
+        "node_id": "world.search_indexes.CountrylanguageIndex.index_queryset",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Returns the queryset for indexing CountryLanguage models. This method is used to define which objects should be indexed by the search index. It retrieves all objects from the model associated with the index.",
+            "signature": "index_queryset() -> QuerySet"
+        },
+        "generated_at": "2025-06-08T17:55:17.240680"
+    },
+    {
+        "node_id": "CountrylanguageIndex.get_model",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Retrieves the model associated with the `CountrylanguageIndex` search index. This function is likely used to access the underlying database model that the search index is built upon.\n\nReturns:\n    The model class associated with the `CountrylanguageIndex`.",
+            "signature": "get_model() -> model"
+        },
+        "generated_at": "2025-06-08T17:55:18.346682"
+    },
+    {
+        "node_id": "world.tests",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "This module contains unit tests for the `world` package. It provides a suite of tests to ensure the correct functionality of the core components within the `world` package, such as classes representing game worlds, characters, and interactions.  Key components to examine include tests for world creation, character movement, and object interaction within the game environment.  The primary purpose is to verify the integrity and stability of the game logic.",
+            "signature": "world.tests"
+        },
+        "generated_at": "2025-06-08T17:55:19.716918"
+    },
+    {
+        "node_id": "world.urls",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "This module defines the URL patterns for the 'world' application. It uses Django's `urlpatterns` to map URL paths to specific views, effectively routing web requests to the appropriate functions within the application.  The primary function of this module is to connect URLs to views, enabling the application to handle different web requests.  The most important element is likely the `urlpatterns` list, which defines the routing rules.",
+            "signature": "world.urls"
+        },
+        "generated_at": "2025-06-08T17:55:21.435409"
+    },
+    {
+        "node_id": "world.util",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "This module provides utility functions and classes for the 'world' package, likely related to game or simulation logic. It contains helpful tools for various tasks within the world simulation, such as data manipulation and object management. Key components include classes for representing game entities and functions for common operations.",
+            "signature": "world.util"
+        },
+        "generated_at": "2025-06-08T17:55:22.899484"
+    },
+    {
+        "node_id": "world.util.otp_generator",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Generates a one-time password (OTP) of a specified length using digits.  The OTP is constructed by randomly selecting digits from the range 0-9.  This function leverages `random.choice` for digit selection and implicitly uses `world.util.range` to define the digit pool.  It does not raise any exceptions based on the provided context.",
+            "signature": "otp_generator(length: int) -> str"
+        },
+        "generated_at": "2025-06-08T17:55:24.166938"
+    },
+    {
+        "node_id": "random.choice",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Chooses a random element from a non-empty sequence.\n\nThis function is a fundamental part of the `random` module and is used to select a random item from a given iterable.\n\nArgs:\n    seq: The non-empty sequence (e.g., list, tuple, string) from which to choose a random element.\n\nReturns:\n    A randomly selected element from the input sequence.\n\nRaises:\n    IndexError: If the input sequence is empty.",
+            "signature": "choice(seq)"
+        },
+        "generated_at": "2025-06-08T17:55:25.334288"
+    },
+    {
+        "node_id": "world.util.range",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Generates a sequence of numbers, similar to Python's built-in `range()` function. This function is likely used for iterating a specific number of times or creating a sequence of indices.\n\nArgs:\n    start: The starting value of the sequence. Defaults to 0.\n    stop: The ending value of the sequence (exclusive).\n    step: The increment between each number in the sequence. Defaults to 1.\n\nReturns:\n    An iterable (likely a list or generator) containing the sequence of numbers.\n\nRaises:\n    TypeError: If any of the input arguments are not integers.\n    ValueError: If the step size is zero.",
+            "signature": "range(start: any = 0, stop: any, step: any = 1) -> any"
+        },
+        "generated_at": "2025-06-08T17:55:26.810808"
+    },
+    {
+        "node_id": "world.util.send_otp_email",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Sends a one-time password (OTP) email to the specified recipient. This function utilizes the `EmailMessage` class to construct the email and the `email.send` function to dispatch it.\n\nArgs:\n    recipient_email: The email address of the recipient.\n    otp: The one-time password to be included in the email.\n\nReturns:\n    True if the email was sent successfully, False otherwise.\n\nRaises:\n    Exception:  If there is an error during email construction or sending (e.g., invalid recipient, SMTP server issues). The specific exception type depends on the underlying `email.send` implementation.",
+            "signature": "send_otp_email(recipient_email, otp) -> bool"
+        },
+        "generated_at": "2025-06-08T17:55:28.288052"
+    },
+    {
+        "node_id": "world.util.EmailMessage",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Represents an email message, likely designed for sending OTP (One-Time Password) emails. This class likely encapsulates the necessary information for constructing and sending an email, such as the sender, recipient, subject, and body. It's probably used in conjunction with a function like `world.util.send_otp_email` to actually dispatch the email.\n\nThis class likely provides methods for setting the email's attributes and potentially for rendering the email body. Users should be aware of the attributes for sender, recipient, subject, and body. The exact methods available will depend on the implementation, but methods for setting these attributes are highly probable.\n\nExample Usage:\n\n```python\n# Assuming the class is instantiated like this:\nemail = EmailMessage()\nemail.sender = \"sender@example.com\"\nemail.recipient = \"recipient@example.com\"\nemail.subject = \"Your OTP\"\nemail.body = \"Your OTP is: 123456\"\n# Then, it would be passed to a sending function (e.g., send_otp_email)\n```",
+            "signature": "EmailMessage()"
+        },
+        "generated_at": "2025-06-08T17:55:30.382805"
+    },
+    {
+        "node_id": "email.send",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Sends an email. This function likely handles the core logic for sending emails, potentially using an external service or library. It's related to `world.util.send_otp_email`, suggesting it might be a more general email sending function, while `send_otp_email` is specialized for OTPs.\n\nArgs:\n    email_address: The recipient's email address.\n    subject: The subject line of the email.\n    body: The content of the email.\n\nReturns:\n    True if the email was sent successfully, False otherwise. The specific success criteria may depend on the underlying email sending implementation.\n\nRaises:\n    Exception:  If there's an error during the email sending process (e.g., network issues, invalid email address, authentication problems). The specific exception type will depend on the underlying email library or service used.",
+            "signature": "email.send(email_address: str, subject: str, body: str) -> bool"
+        },
+        "generated_at": "2025-06-08T17:55:32.245427"
+    },
+    {
+        "node_id": "world.util.validate_otp",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Validates a one-time password (OTP) against a stored value. This function likely compares the provided OTP with a previously generated and stored OTP, potentially considering factors like time-based validity.\n\nArgs:\n    otp: The OTP string to validate.\n    stored_otp: The OTP string stored for comparison.\n\nReturns:\n    True if the OTP is valid, False otherwise.\n\nRaises:\n    ValueError: If either `otp` or `stored_otp` are invalid (e.g., incorrect format).",
+            "signature": "validate_otp(otp: str, stored_otp: str) -> bool"
+        },
+        "generated_at": "2025-06-08T17:55:35.347535"
+    },
+    {
+        "node_id": "world.views",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "This module defines the views for the 'world' application, handling user interactions and data presentation related to world-related information. It likely contains view functions that respond to HTTP requests, rendering templates and interacting with models to display data. Key components include views for displaying world details, handling user input, and potentially managing world-related resources.\n\nThis module is the entry point for handling web requests related to the 'world' application, processing user input and returning rendered HTML responses.",
+            "signature": "world.views"
+        },
+        "generated_at": "2025-06-08T17:55:36.637856"
+    },
+    {
+        "node_id": "world.views.home",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Renders the home page of the application.\n\nThis view function uses Django's `render` function to generate an HTTP response containing the rendered home page template.\n\nReturns:\n    HttpResponse: An HTTP response containing the rendered home page.",
+            "signature": "home(request) -> HttpResponse"
+        },
+        "generated_at": "2025-06-08T17:55:43.954621"
+    },
+    {
+        "node_id": "django.render",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Renders a given template with a given context. This function is a core part of Django's view rendering process, taking a template and a dictionary of data and returning an HTTP response containing the rendered template.\n\nArgs:\n    request: The request object, which is an instance of `HttpRequest`. This object contains metadata about the incoming HTTP request.\n    template_name: The name of the template to render, typically a string representing the path to the template file (e.g., 'myapp/mytemplate.html').\n    context: A dictionary of data that will be passed to the template. The template engine uses this data to populate placeholders in the template.\n    using:  (Optional) The name of the template engine to use. If not provided, the default template engine is used.\n\nReturns:\n    An `HttpResponse` object containing the rendered template. This response is ready to be sent back to the client.\n\nRaises:\n    TemplateDoesNotExist: If the specified template does not exist.\n    Exception: Other exceptions can be raised during template rendering, such as errors in the template syntax or issues accessing data in the context.",
+            "signature": "render(request, template_name, context=None, using=None) -> HttpResponse"
+        },
+        "generated_at": "2025-06-08T17:55:46.712668"
+    },
+    {
+        "node_id": "world.views.search",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Handles search queries and renders the search results.  It uses a `SearchQuerySet` to perform the search and then renders the results using the Django `render` function.\n\nArgs:\n    request: The HTTP request object.\n\nReturns:\n    An HTTP response containing the rendered search results template, or the index template if no search query is provided.\n\nRaises:\n    Exception: Potentially raises exceptions during the search query execution or template rendering, depending on the underlying implementation of `SearchQuerySet` and Django's `render` function.",
+            "signature": "search(request)"
+        },
+        "generated_at": "2025-06-08T17:55:49.333123"
+    },
+    {
+        "node_id": "<ComplexCall>.strip",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Removes leading and trailing whitespace from a string.\n\nThis method is a built-in string method in Python and is used to clean up strings by removing any whitespace characters (spaces, tabs, newlines, etc.) from the beginning and end of the string.\n\nArgs:\n    None: This method takes no arguments.\n\nReturns:\n    str: A new string with leading and trailing whitespace removed. If the original string contains only whitespace, an empty string is returned.\n\nRaises:\n    TypeError: If the method is called on an object that is not a string.",
+            "signature": "strip() -> str"
+        },
+        "generated_at": "2025-06-08T17:55:51.013856"
+    },
+    {
+        "node_id": "<ComplexCall>.get",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Retrieves data, likely from a database or external source, based on provided criteria. This function is part of a larger system that handles country details, searches, and login validation, suggesting it's used to fetch specific information. The exact nature of the data retrieved depends on the implementation details within the function.",
+            "signature": "get()"
+        },
+        "generated_at": "2025-06-08T17:55:52.099789"
+    },
+    {
+        "node_id": "world.views.len",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Calculates the length of a world-related object, likely a list or string representing world data. This function is likely used to determine the size or number of elements within a world representation.\n\nArgs:\n    world_object: The world object whose length is to be determined. This could be a string, list, or other iterable representing world data.\n\nReturns:\n    The integer length of the world_object.\n\nRaises:\n    TypeError: If the provided world_object does not support the `len()` function (e.g., if it's an integer or a custom object without a defined `__len__` method).",
+            "signature": "len(world_object) -> int"
+        },
+        "generated_at": "2025-06-08T17:55:53.670352"
+    },
+    {
+        "node_id": "world.views.JsonResponse",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "A custom JSON response class that extends Django's `JsonResponse`. It provides a standardized way to return JSON responses with consistent formatting, particularly for API endpoints. This class is likely used throughout the `world.views` module to format responses from functions like `signup_validate`, `send_otp`, `search`, and `login_validate`.\n\nThis class inherits from `django.http.JsonResponse` and likely overrides or extends its functionality to include custom headers, status codes, or data formatting specific to the application's needs.\n\nUsage Example:\n```python\nfrom world.views import JsonResponse\n\n# Assuming some data to return\ndata = {'message': 'Success', 'data': {'user_id': 123}}\n\n# Create a JsonResponse instance\nresponse = JsonResponse(data, status=200)\n\n# Return the response from a Django view\nreturn response\n```",
+            "signature": "JsonResponse(data, encoder=None, safe=True, json_dumps_params=None, **kwargs) -> django.http.JsonResponse"
+        },
+        "generated_at": "2025-06-08T17:55:55.741627"
+    },
+    {
+        "node_id": "world.views.list",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Retrieves a list of items, likely representing a collection of data related to the 'world'. This function likely serves as an entry point for listing resources, potentially paginated or filtered.  It's related to a search function, implying the list can be refined.  The exact nature of the items in the list is not specified in the context.",
+            "signature": "list()"
+        },
+        "generated_at": "2025-06-08T17:55:56.876844"
+    },
+    {
+        "node_id": "<ComplexCall>.values_list",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Retrieves a list of values from the results of a complex call. This is likely used to extract specific data fields from a query result, similar to how `values_list` is used in Django's ORM. The exact behavior depends on the implementation of the `ComplexCall` object.\n\nArgs:\n    *fields: Variable number of field names or expressions to retrieve.  These specify which data points to extract from the underlying data structure.\n    flat: If True and only one field is specified, the result will be a flat list of values. Otherwise, the result will be a list of tuples.\n\nReturns:\n    A list of values or tuples of values, depending on the `flat` parameter and the number of fields specified.\n\nRaises:\n    TypeError: If the `flat` argument is True and more than one field is specified.",
+            "signature": "values_list(*fields, flat: bool = False) -> list"
+        },
+        "generated_at": "2025-06-08T17:55:58.717941"
+    },
+    {
+        "node_id": "<ComplexCall>.autocomplete",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Provides autocomplete suggestions, likely for a search query. This function is related to the `world.views.search` function, suggesting it's used to enhance the search functionality by offering potential search terms as the user types.\n\nArgs:\n    query: The search query string to provide autocomplete suggestions for.\n\nReturns:\n    A list of autocomplete suggestions (strings).",
+            "signature": "autocomplete(query: str) -> list[str]"
+        },
+        "generated_at": "2025-06-08T17:55:59.858597"
+    },
+    {
+        "node_id": "world.views.SearchQuerySet",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Represents a search query set, likely used to encapsulate and manage search results. This class is likely used in conjunction with the `search` view function to perform and display search results. It probably inherits from a base class that provides common queryset functionalities. Key methods to be aware of are likely related to filtering, pagination, and result retrieval.\n\nThis class is responsible for handling the search query, executing the search, and providing access to the search results. It may also handle aspects like result ranking and highlighting.\n\nUsage Example:\n```python\n# Assuming you have a SearchQuerySet instance called 'results'\n# Access the search results\nfor result in results:\n    print(result)\n\n# Get the total number of results\ntotal_results = results.count()\n\n# Paginate the results (example, may vary depending on implementation)\npaginated_results = results[0:10] # Get the first 10 results\n```",
+            "signature": "SearchQuerySet()"
+        },
+        "generated_at": "2025-06-08T17:56:01.849269"
+    },
+    {
+        "node_id": "<ComplexCall>.first",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "",
+            "signature": "first() -> any\""
+        },
+        "generated_at": "2025-06-08T17:56:03.251087"
+    },
+    {
+        "node_id": "<ComplexCall>.values",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Retrieves the values associated with the keys in the ComplexCall object. This likely returns a collection of data related to the call, potentially used for display or further processing, similar to how search results might be presented in `world.views.search`.",
+            "signature": "values() -> any"
+        },
+        "generated_at": "2025-06-08T17:56:04.277899"
+    },
+    {
+        "node_id": "<ComplexCall>.filter",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Filters a collection of items based on a specified criteria. This function is likely used within a search or data processing context, potentially related to the `world.views.search` function. The exact filtering logic depends on the implementation within `ComplexCall`.",
+            "signature": "filter()"
+        },
+        "generated_at": "2025-06-08T17:56:05.302021"
+    },
+    {
+        "node_id": "world.views.signup",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Handles user signup requests. Renders the signup form and processes the submitted data.  Uses Django's `render` function to display the signup form.  This view likely interacts with a form to validate and create new user accounts.",
+            "signature": "signup(request)"
+        },
+        "generated_at": "2025-06-08T17:56:06.306121"
+    },
+    {
+        "node_id": "world.views.signup_validate",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Validates the signup data received from the client. This function expects a JSON payload containing user signup information, including an email address. It then generates and sends a One-Time Password (OTP) to the provided email address for verification.  It uses `otp_generator` to create the OTP and `send_otp_email` to send it.  It also interacts with a database or similar storage mechanism via a `create` method (likely on a model).",
+            "signature": "signup_validate(request: any) -> JsonResponse"
+        },
+        "generated_at": "2025-06-08T17:56:07.585972"
+    },
+    {
+        "node_id": "json.loads",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Parses a JSON string and converts it into a Python object. This function is a core part of handling JSON data, often used to receive data from external sources like API calls or user input. It's frequently used in conjunction with functions like `world.views.signup_validate`, `world.views.send_otp`, and `world.views.login_validate` to process data received in JSON format.\n\nArgs:\n    s: The JSON string to parse.\n\nReturns:\n    The Python object represented by the JSON string (e.g., a dictionary, list, string, number, boolean, or None).\n\nRaises:\n    JSONDecodeError: If the input string `s` is not a valid JSON document.",
+            "signature": "loads(s: str) -> Any"
+        },
+        "generated_at": "2025-06-08T17:56:09.481944"
+    },
+    {
+        "node_id": "body.get",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Retrieves a value from a dictionary-like object, providing a default if the key is not found. This function is likely used to access data from a request body, as suggested by the context of related functions like `signup_validate`, `send_otp`, and `login_validate` which handle user input and authentication.\n\nArgs:\n    key: The key to look up in the dictionary-like object.\n    default: The value to return if the key is not found. Defaults to None.\n\nReturns:\n    The value associated with the key if found, otherwise the default value.\n\nRaises:\n    TypeError: If the provided object is not dictionary-like and does not support the `get` method.",
+            "signature": "body.get(key, default=None)"
+        },
+        "generated_at": "2025-06-08T17:56:11.561353"
+    },
+    {
+        "node_id": "<ComplexCall>.create",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Creates something, likely related to user signup validation based on the context. This function's exact behavior depends on the implementation within the `ComplexCall` class, but it's likely responsible for initializing or setting up a resource.\n\nArgs:\n    No specific parameters can be determined from the context.\n\nReturns:\n    No specific return value can be determined from the context.\n\nRaises:\n    No specific exceptions can be determined from the context.",
+            "signature": "create()"
+        },
+        "generated_at": "2025-06-08T17:56:13.055887"
+    },
+    {
+        "node_id": "world.views.otp_generator",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Generates a one-time password (OTP). This function is likely used in conjunction with signup and authentication processes, potentially to validate user identities. It's related to `signup_validate` and `send_otp`, suggesting it's a component of a larger OTP-based workflow.",
+            "signature": "otp_generator() -> str"
+        },
+        "generated_at": "2025-06-08T17:56:14.083565"
+    },
+    {
+        "node_id": "world.views.send_otp_email",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Sends a one-time password (OTP) to a user's email address. This function is likely used during the signup or authentication process, similar to `send_otp` and in conjunction with `signup_validate`.\n\nArgs:\n    request: The HTTP request object, likely containing user information.\n\nReturns:\n    A response indicating the success or failure of the OTP sending process. The specific format of the response (e.g., JSON) is not specified but is likely consistent with other view functions.\n\nRaises:\n    Exception: Any exception that might occur during the email sending process (e.g., network issues, invalid email address) could potentially be raised. The specific exception type is not specified.",
+            "signature": "send_otp_email(request)"
+        },
+        "generated_at": "2025-06-08T17:56:15.673296"
+    },
+    {
+        "node_id": "world.views.c_login",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Handles the login process.  It renders the login form and processes the submitted data.  If the login is successful, the user is redirected to the home page.  If the login fails, an error message is displayed.",
+            "signature": "c_login(request) -> HttpResponse"
+        },
+        "generated_at": "2025-06-08T17:56:16.585607"
+    },
+    {
+        "node_id": "world.views.send_otp",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Sends a One-Time Password (OTP) to a user via email. This function retrieves the user's email from the request body, generates an OTP, and then calls `send_otp_email` to send the OTP. It returns a JSON response indicating success or failure.\n\nArgs:\n    request: The HTTP request object containing the user's email in the request body.\n\nReturns:\n    A `JsonResponse` object indicating the success or failure of the OTP sending process.  Returns a success message if the email is valid and the OTP is sent successfully, or an error message if there's an issue (e.g., invalid email, failure to send).\n\nRaises:\n    ValueError: If the request body is not valid JSON or if the 'email' field is missing.",
+            "signature": "send_otp(request)"
+        },
+        "generated_at": "2025-06-08T17:56:18.155600"
+    },
+    {
+        "node_id": "world.views.login_validate",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Validates user login credentials. This function likely receives user input (username, password) and checks them against a data store (e.g., database). It then returns a success or failure response, potentially including an authentication token upon successful validation.\n\nArgs:\n    request: The HTTP request object, containing user input (likely in the request body).\n\nReturns:\n    A JsonResponse object indicating the success or failure of the login attempt.  On success, it may include an authentication token. On failure, it will provide an error message.\n\nRaises:\n    ValueError: If the request body is not valid JSON or if required parameters are missing.",
+            "signature": "login_validate(request) -> JsonResponse"
+        },
+        "generated_at": "2025-06-08T17:56:19.710719"
+    },
+    {
+        "node_id": "world.views.validate_otp",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Validates a one-time password (OTP) provided by the user. This function is likely used as part of a login or authentication process, potentially in conjunction with `world.views.login_validate`.\n\nArgs:\n    request: The HTTP request object, likely containing the OTP in the request body or parameters.\n\nReturns:\n    A response indicating the success or failure of the OTP validation. This could be a JSON response with success/failure status and potentially user data on success.\n\nRaises:\n    ValueError: If the OTP is invalid or missing. This could be due to incorrect format, expiration, or mismatch with the stored OTP.",
+            "signature": "validate_otp(request)"
+        },
+        "generated_at": "2025-06-08T17:56:21.152696"
+    },
+    {
+        "node_id": "world.views.login",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Handles user login attempts. This view likely processes user credentials (e.g., username and password) submitted through a form, validates them, and either authenticates the user or displays an error message. It often interacts with a database or authentication system.  It is related to `login_validate` which likely performs the actual validation.",
+            "signature": "login()"
+        },
+        "generated_at": "2025-06-08T17:56:22.268955"
+    },
+    {
+        "node_id": "world.views.c_logout",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Logs out the current user and redirects to the login page. This function utilizes Django's built-in `logout` function to clear the user's session and then redirects to the login URL.  It's a convenience function for handling user logout within the application's views.",
+            "signature": "c_logout(request) -> HttpResponseRedirect"
+        },
+        "generated_at": "2025-06-08T17:56:23.247827"
+    },
+    {
+        "node_id": "world.views.logout",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Logs the current user out of the system and redirects to the home page.  This view invalidates the user's session.  It's typically called after a user clicks a 'logout' link or button.\n\nArgs:\n    request: The HTTP request object.\n\nReturns:\n    A redirect to the home page (usually '/') after logging the user out.",
+            "signature": "logout(request)"
+        },
+        "generated_at": "2025-06-08T17:56:24.433584"
+    },
+    {
+        "node_id": "world.views.HttpResponseRedirect",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "The `HttpResponseRedirect` class is a Django-specific class used to redirect the user to a different URL. It's a subclass of `HttpResponse` and is commonly used in views to send a redirect response to the client's browser. This class sets the `Location` header in the HTTP response, instructing the browser to navigate to the specified URL.  It's frequently used after a successful form submission or to direct users to a login page after logging out (as seen in the related `c_logout` function).",
+            "signature": "HttpResponseRedirect(redirect_url: str, permanent: bool = False) -> HttpResponseRedirect"
+        },
+        "generated_at": "2025-06-08T17:56:26.171661"
+    },
+    {
+        "node_id": "world.views.get_country_details",
+        "repository_id": "",
+        "documentation": {
+            "docstring": "Retrieves and displays detailed information about a specific country. It uses the country code provided in the URL to fetch the country details and renders a template with the information.\n\nArgs:\n    request: The HTTP request object.\n    country_code: The two-letter country code (e.g., 'US') used to identify the country.\n\nReturns:\n    An HTTP response containing the rendered template with country details.\n\nRaises:\n    Http404: If the country with the given code is not found.",
+            "signature": "get_country_details(request, country_code)"
+        },
+        "generated_at": "2025-06-08T17:56:27.801241"
+    }
+]
