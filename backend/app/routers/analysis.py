@@ -11,7 +11,7 @@ from fastapi import (
 )
 from fastapi.responses import JSONResponse, StreamingResponse
 from typing import Optional, List
-from pydantic import HttpUrl, BaseModel
+from pydantic import HttpUrl, BaseModel, validator
 from sqlalchemy import JSON, Column, DateTime, Float, Integer, String
 from sqlalchemy.orm import Session
 import os
@@ -76,6 +76,30 @@ class DatasetRequest(BaseModel):
 class ChatRequest(BaseModel):
     query: str
     repo_url: Optional[HttpUrl] = None
+    callgraph_data: Optional[dict] = None
+    documentation_data: Optional[dict] = None
+    
+    class Config:
+        arbitrary_types_allowed = True
+        extra = "allow"
+        
+    @validator('query')
+    def query_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Query cannot be empty')
+        return v
+        
+    @validator('callgraph_data')
+    def validate_callgraph_data(cls, v):
+        if v is not None and not isinstance(v, dict):
+            raise ValueError('Callgraph data must be a dictionary or null')
+        return v
+        
+    @validator('documentation_data')
+    def validate_documentation_data(cls, v):
+        if v is not None and not isinstance(v, dict):
+            raise ValueError('Documentation data must be a dictionary or null')
+        return v
 
 
 @router.post("/generate-callgraph")
@@ -454,20 +478,85 @@ async def benchmark(
 
 @router.post("/chat")
 async def chat_with_llm(
-    request: ChatRequest, current_user: User = Depends(get_current_user)
+    request: Request, current_user: User = Depends(get_current_user)
 ):
     try:
-        query = request.query
-        if not query:
+        # Get raw request data for debugging
+        raw_data = await request.json()
+        logger.info(f"Received raw chat request data: {raw_data}")
+        
+        # Validate manually
+        if "query" not in raw_data or not raw_data["query"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Query is required"
             )
-        context = "No codebase context provided."
-        if request.repo_url:
+        
+        query = raw_data["query"]
+        repo_url = raw_data.get("repo_url")
+        callgraph_data = raw_data.get("callgraph_data")
+        documentation_data = raw_data.get("documentation_data")
+        
+        # Build context from provided data
+        context = ""
+        
+        # Add callgraph data to context if available
+        if callgraph_data and isinstance(callgraph_data, dict):
+            context += "Codebase Structure Context:\n"
+            
+            # Add nodes information
+            if "nodes" in callgraph_data and callgraph_data["nodes"]:
+                for node in callgraph_data["nodes"][:50]:  # Limit to 50 nodes to avoid token limits
+                    node_id = node.get("id", "Unknown")
+                    node_type = node.get("type", "Unknown")
+                    
+                    # Extract metadata if available
+                    metadata = node.get("metadata", {})
+                    docstring = metadata.get("docstring", "No docstring available.")
+                    complexity = node.get("complexity", "N/A")
+                    
+                    context += f"- {node_type.capitalize()}: {node_id}\n"
+                    if len(docstring) > 200:
+                        docstring = docstring[:200] + "..."
+                    context += f"  Docstring: {docstring}\n"
+                    context += f"  Complexity: {complexity}\n"
+            
+            # Add relationships information
+            if "links" in callgraph_data and callgraph_data["links"]:
+                context += "\nCode Relationships:\n"
+                for link in callgraph_data["links"][:30]:  # Limit to 30 links
+                    source = link.get("source", "Unknown")
+                    target = link.get("target", "Unknown")
+                    link_type = link.get("type", "Unknown")
+                    context += f"- {source} -> {target} ({link_type})\n"
+        
+        # Add documentation data to context if available
+        if documentation_data and isinstance(documentation_data, dict):
+            context += "\nDocumentation Context:\n"
+            
+            # Add overview if available
+            if "overview" in documentation_data:
+                context += f"Overview: {documentation_data['overview']}\n\n"
+            
+            # Add architecture if available
+            if "architecture" in documentation_data:
+                context += f"Architecture: {documentation_data['architecture']}\n\n"
+            
+            # Add modules information
+            if "modules" in documentation_data and documentation_data["modules"]:
+                context += "Key Modules:\n"
+                for module in documentation_data["modules"][:10]:  # Limit to 10 modules
+                    module_name = module.get("name", "Unknown")
+                    module_desc = module.get("docstring", "")
+                    if len(module_desc) > 200:
+                        module_desc = module_desc[:200] + "..."
+                    context += f"- {module_name}: {module_desc}\n"
+        
+        # If no context was provided, try to analyze the repository
+        if not context and repo_url:
             generator = CallgraphGenerator()
             try:
                 repo_path = await generator.clone_repository(
-                    str(request.repo_url), current_user.access_token
+                    str(repo_url), current_user.access_token
                 )
                 callgraph = await generator.analyze_repository(repo_path)
                 await generator.cleanup()
@@ -486,16 +575,29 @@ async def chat_with_llm(
             except Exception as e:
                 logger.error("Failed to analyze repository for context: " f"{str(e)}")
                 context = f"Failed to analyze repository: {str(e)}"
+        
+        # If still no context, set a default message
+        if not context:
+            context = "No codebase context provided."
+        
+        # Create the prompt for the LLM
         prompt = (
             f"Given the following codebase context:\n{context}\n\n"
             f"Answer the following question about the codebase:\n{query}"
         )
+        
+        # Generate the response
         response = flash_model.generate_content(
             prompt,
-            generation_config=genai.types.GenerationConfig(max_output_tokens=150),
+            generation_config=genai.types.GenerationConfig(
+                max_output_tokens=500,  # Increased token limit for more detailed responses
+                temperature=0.2,  # Lower temperature for more factual responses
+            ),
         )
+        
         return {"response": response.text}
     except Exception as e:
+        logger.error(f"Error in chat_with_llm: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process chat query: {str(e)}",
