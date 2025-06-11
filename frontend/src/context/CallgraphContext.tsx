@@ -14,6 +14,8 @@ interface CallgraphContextType {
   metrics: any;
   setMetrics: (metrics: any) => void;
   clearCallgraphData: () => void;
+  documentation: any;
+  setDocumentation: (documentation: any) => void;
 }
 const CallgraphContext = createContext<CallgraphContextType | undefined>(
   undefined,
@@ -40,11 +42,19 @@ export function CallgraphProvider({ children }: { children: ReactNode }) {
     }
     return null;
   });
+  const [documentation, setDocumentation] = useState<any>(() => {
+    if (typeof window !== "undefined") {
+      const savedDocumentation = localStorage.getItem("documentation");
+      return savedDocumentation ? JSON.parse(savedDocumentation) : null;
+    }
+    return null;
+  });
   useEffect(() => {
     console.log("CallgraphContext updated:", {
       repoUrl,
       callgraphData,
       metrics,
+      documentation,
     });
     if (repoUrl) {
       localStorage.setItem("repoUrl", repoUrl);
@@ -61,14 +71,21 @@ export function CallgraphProvider({ children }: { children: ReactNode }) {
     } else {
       localStorage.removeItem("metrics");
     }
-  }, [repoUrl, callgraphData, metrics]);
+    if (documentation) {
+      localStorage.setItem("documentation", JSON.stringify(documentation));
+    } else {
+      localStorage.removeItem("documentation");
+    }
+  }, [repoUrl, callgraphData, metrics, documentation]);
   const clearCallgraphData = () => {
     setRepoUrl("");
     setCallgraphData(null);
     setMetrics(null);
+    setDocumentation(null);
     localStorage.removeItem("repoUrl");
     localStorage.removeItem("callgraphData");
     localStorage.removeItem("metrics");
+    localStorage.removeItem("documentation");
   };
   return (
     <CallgraphContext.Provider
@@ -80,6 +97,8 @@ export function CallgraphProvider({ children }: { children: ReactNode }) {
         metrics,
         setMetrics,
         clearCallgraphData,
+        documentation,
+        setDocumentation,
       }}
     >
       {children}

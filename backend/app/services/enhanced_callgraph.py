@@ -25,48 +25,54 @@ class EnhancedCallgraphGenerator(CallgraphGenerator):
         }
 
     async def analyze_repository(
-        self,
-        repo_path: str,
-        timeout: int = 300,
-        clone: bool = False,
-        perform_cleanup: bool = True,
+        self, repo_path: str, timeout: int = 600, clone: bool = False, perform_cleanup: bool = True
     ) -> Dict:
         start_time = time.time()
-        logger.info(f"Starting enhanced repository analysis in: {repo_path}")
-        base_result = await super().analyze_repository(
-            repo_path, timeout, clone, perform_cleanup=perform_cleanup
+        self.status = "Analyzing repository..."
+
+        logger.info(f"[EnhancedCallgraphGenerator] Starting analysis, calling parent CallgraphGenerator.")
+
+        # --- FIX STEP 1: Call the parent (CallgraphGenerator) FIRST. ---
+        # This will handle cloning and perform the basic static analysis, populating
+        # self.functions, self.classes, self.repo_path, etc.
+        # We pass perform_cleanup=False because the top-level caller (Research) will handle it.
+        await super().analyze_repository(
+            repo_path, timeout, clone, perform_cleanup=False
         )
-        self.nodes = base_result.get("nodes", [])
-        self.links = base_result.get("links", [])
+
+        # --- FIX STEP 2: Now that the parent has run, create the base copies. ---
         self.base_functions = self.functions.copy()
         self.base_classes = self.classes.copy()
-        repo_root = self.repo_path
-        logger.info(f"Enhancing analysis with advanced function call detection...")
-        for root, dirs, files in os.walk(repo_root):
+
+        logger.info(f"Enhancing analysis with scope and definition management...")
+        for root, dirs, files in os.walk(self.repo_path):
             dirs[:] = [
                 d
                 for d in dirs
-                if not d.startswith((".", "_"))
-                and d not in ("venv", "env", "node_modules", "__pycache__")
+                if not d.startswith(('.', '_'))
+                and d not in ('venv', 'env', 'node_modules', '__pycache__', '.git')
             ]
             for file in files:
-                if file.endswith(".py"):
+                if file.endswith('.py'):
                     file_path = os.path.join(root, file)
                     try:
                         self._enhanced_analyze_file(file_path)
                     except Exception as e:
-                        logger.debug(
-                            f"Error in enhanced analysis of {file_path}: {str(e)}"
-                        )
+                        logger.debug(f"Error in enhanced analysis of {file_path}: {str(e)}")
+
         self.framework_type = self._detect_framework()
         logger.info(f"Detected framework: {self.framework_type}")
+
         if self.framework_type in self.framework_specific_handlers:
             handler = self.framework_specific_handlers[self.framework_type]
             handler()
+
         enhanced_callgraph = self._build_enhanced_callgraph()
-        logger.info(
-            f"Enhanced analysis completed in {time.time() - start_time:.2f} seconds"
-        )
+
+        if perform_cleanup and clone:
+            await self.cleanup()
+
+        logger.info(f"Enhanced analysis completed in {time.time() - start_time:.2f} seconds")
         return enhanced_callgraph
 
     def _enhanced_analyze_file(self, file_path: str) -> None:
@@ -168,21 +174,27 @@ class EnhancedCallgraphGenerator(CallgraphGenerator):
             return max(framework_indicators.items(), key=lambda x: x[1])[0]
         return "python"
 
+    async def cleanup(self):
+        if self.repo_path and os.path.exists(self.repo_path):
+            logger.info(f"Cleaning up temporary repository at {self.repo_path}")
+            try:
+                import shutil
+                shutil.rmtree(self.repo_path)
+                self.repo_path = None
+            except Exception as e:
+                logger.error(f"Error cleaning up repository {self.repo_path}: {e}")
+
     def _handle_django_framework(self) -> None:
         logger.info("Applying Django-specific analysis...")
         django_views = set()
         for func_name, func_info in self.base_functions.items():
             if func_info.get("is_django_view", False):
                 django_views.add(func_name)
-                if func_name in self.functions:
-                    self.functions[func_name]["is_django_view"] = True
             if "views.py" in func_info.get("file", ""):
                 if not func_name.startswith("_"):
                     django_views.add(func_name)
-                    if func_name in self.functions:
-                        self.functions[func_name]["is_django_view"] = True
         django_models = set()
-        for class_name, class_info in self.classes.items():
+        for class_name, class_info in self.base_classes.items():
             if "models.py" in class_info.get("file", ""):
                 django_models.add(class_name)
         logger.info(f"Found {len(django_views)} Django view functions")
@@ -253,7 +265,7 @@ class EnhancedCallgraphGenerator(CallgraphGenerator):
     def _add_view_to_view_links(self, view_functions: Set[str]) -> None:
         for view_func in view_functions:
             try:
-                if view_func not in self.functions:
+                if view_func not in self.base_functions:
                     continue
                 func_info = self.functions[view_func]
                 node = func_info.get("node")
@@ -286,7 +298,7 @@ class EnhancedCallgraphGenerator(CallgraphGenerator):
 
     def _connect_django_views_to_templates(self, view_functions: Set[str]) -> None:
         for view_func in view_functions:
-            if view_func not in self.functions:
+            if view_func not in self.base_functions:
                 continue
             func_info = self.functions[view_func]
             func_node = func_info.get("node")
@@ -520,7 +532,7 @@ class EnhancedCallgraphGenerator(CallgraphGenerator):
                         )
         for view_func in view_functions:
             try:
-                if view_func not in self.functions:
+                if view_func not in self.base_functions:
                     continue
                 view_info = self.functions[view_func]
                 node = view_info.get("node")
@@ -590,7 +602,7 @@ class EnhancedCallgraphGenerator(CallgraphGenerator):
         for func_name, func_def in self.definition_manager.functions.items():
             short_name = func_name.split(".")[-1]
             matching_func = None
-            for existing_func in self.functions.keys():
+            for existing_func in self.base_functions.keys():
                 if (
                     existing_func.endswith("." + short_name)
                     or existing_func == short_name
@@ -602,7 +614,7 @@ class EnhancedCallgraphGenerator(CallgraphGenerator):
             for target_name, call_node in func_def.calls:
                 target_short_name = target_name.split(".")[-1]
                 matching_target = None
-                for existing_func in self.functions.keys():
+                for existing_func in self.base_functions.keys():
                     if (
                         existing_func.endswith("." + target_short_name)
                         or existing_func == target_short_name
@@ -665,8 +677,8 @@ class EnhancedCallgraphGenerator(CallgraphGenerator):
         result = {
             "nodes": self.nodes,
             "links": self.links,
-            "classes": list(self.classes.keys()),
-            "imports": self.imports,
+            "classes": list(self.base_classes.keys()),
+            "imports": self.base_imports,
             "metadata": {
                 "total_nodes": len(self.nodes),
                 "total_links": len(self.links),

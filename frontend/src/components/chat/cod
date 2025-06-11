@@ -1,0 +1,193 @@
+Okay, let's walk through the changes you need to make in the provided code to pass the callgraphData and documentation to your /api/chat endpoint, and how to handle the context with Gemini.
+
+1. Frontend (VisualizePage Component - Where you are analyzing the repo):
+
+You already have most of the frontend set up! The critical part is to ensure that callgraphData and documentation are correctly populated in the VisualizePage component and then pass them to the ChatInterface.
+
+No Changes Needed (Assuming Your Context is Correctly Passed):
+
+Because you have the useCallgraph context, and it appears your VisualizePage is set up correctly to populate it, you likely don't need to modify the VisualizePage component itself. The context provider handles the data. The ChatInterface will then use this context.
+
+2. Frontend (ChatInterface Component - Where the Chat UI is):
+
+Key Change: Pass callgraphData and documentation to /api/chat
+
+You already have this! The ChatInterface component is correctly passing the callgraph_data and documentation_data to the backend. No changes needed here.
+
+3. Backend (FastAPI - /api/chat Endpoint):
+
+Model Updates (Already Done): The backend is already updated to accept the callgraph_data and documentation_data in the ChatMessageCreate model.
+
+Backend, ChatService.process_message (Important):
+
+This is where the magic happens. This is where you will build the prompt and send it to the Gemini API.
+
+```python
+# Inside ChatService class:
+import os
+from typing import Dict, List, Optional, Any
+from google.generativeai import configure, GenerativeModel, ChatSession
+import google.generativeai as genai
+
+
+class ChatService:
+    # ... (other methods)
+
+    # Initialize Google Gemini (moved outside process_message)
+    def __init__(self):
+        # API_KEY is set as an environment variable.
+        if not os.environ.get("GOOGLE_API_KEY"):
+            raise ValueError("GOOGLE_API_KEY environment variable not set.")
+        google_api_key = os.environ.get("GOOGLE_API_KEY")
+        genai.configure(api_key=google_api_key)  # Configure once
+        self.model = GenerativeModel('gemini-pro')
+        self.chat: ChatSession = self._start_chat_session()  # Initialize chat session
+
+    def _start_chat_session(self) -> ChatSession:
+      """Starts a new chat session with the Gemini model."""
+      return self.model.start_chat()
+
+
+    async def process_message(
+        self,
+        session_id: str,
+        message: str,
+        callgraph_data: Optional[Dict] = None,
+        documentation_data: Optional[Dict] = None,
+        code_elements: Optional[List[Dict]] = None,
+        highlighted_code: Optional[str] = None,
+    ) -> Dict:
+        """
+        Processes a user message and generates a response from the LLM.
+        """
+        session = self.get_session(session_id)
+        if not session:
+            return {"error": "Session not found"}
+
+        # Build the prompt (THIS IS THE CORE OF THE INTEGRATION)
+        prompt = self._build_prompt(
+            message,
+            callgraph_data=callgraph_data,
+            documentation_data=documentation_data
+        )
+
+        # Get response from LLM (replace with your LLM integration)
+        try:
+            # Send the prompt and get the response
+            response = self.chat.send_message(prompt) # Use chat
+            response_text = response.text  # Access the text content
+            context_used: List[Dict] = []  # Implement context extraction if needed.
+
+            # Optional: Get model and usage from response
+            model = "gemini-pro"
+            usage = {} # Gemini API doesn't have usage metrics
+        except Exception as e:
+            # Handle LLM errors
+            print(f"Error generating LLM response: {e}")
+            return {"error": f"Failed to generate response: {str(e)}"}
+
+
+        # Store the message
+        self._add_message_to_session(session_id, "user", message)
+        self._add_message_to_session(session_id, "assistant", response_text)  # Use response.text
+
+        return {
+            "response": response_text,  # Use response.text
+            "session_id": session_id,
+            "context_used": context_used,
+            "model": model,
+            "usage": usage
+        }
+
+    def _build_prompt(
+        self,
+        message: str,
+        callgraph_data: Optional[Dict] = None,
+        documentation_data: Optional[Dict] = None,
+    ) -> str:
+        """
+        Builds the prompt for the LLM, incorporating the user's message,
+        callgraph data, and documentation data.
+        """
+        # 1. Start with the user's query
+        prompt = f"User query: {message}\n\n"
+
+        # 2. Add callgraph context (if available)
+        if callgraph_data:
+            prompt += "Callgraph context:\n"
+            #  *  Example: Summarize callgraph information
+            prompt += self._summarize_callgraph(callgraph_data) + "\n\n"
+
+        # 3. Add documentation context (if available)
+        if documentation_data:
+            prompt += "Documentation context:\n"
+            #  * Example: Include an overview and modules
+            prompt += self._format_documentation(documentation_data) + "\n\n"
+
+        # 4.  Instruction:  Tell the LLM how to use the context.
+        prompt += "Based on the provided information, answer the user's question. Be concise and reference specific code elements or documentation sections when possible."
+        # You'll likely need to experiment with different prompt formats to get the best results.
+        # Add more instructions to guide the LLM
+        return prompt
+
+    def _summarize_callgraph(self, callgraph_data: Dict) -> str:
+        """
+        Provides a high-level summary of the callgraph.
+        """
+        nodes_count = len(callgraph_data.get("nodes", []))
+        links_count = len(callgraph_data.get("links", []))
+        metadata = callgraph_data.get("metadata", {})
+
+        summary = f"The callgraph contains {nodes_count} functions and {links_count} dependencies.\n"
+
+        #  * Example: Include basic metrics
+        if "metrics" in metadata:
+            summary += f"Metrics: Avg. Complexity: {metadata['metrics'].get('avg_complexity', 'N/A')}, Cohesion: {metadata['metrics'].get('cohesion', 'N/A')}, Coupling: {metadata['metrics'].get('coupling', 'N/A')}\n"
+        return summary
+
+    def _format_documentation(self, documentation_data: Dict) -> str:
+        """
+        Formats the documentation data for the prompt.
+        """
+        formatted_doc = ""
+
+        #  * Example: Include overview, modules and dependencies
+        if "overview" in documentation_data:
+            formatted_doc += f"Overview: {documentation_data['overview']}\n"
+
+        if "modules" in documentation_data and isinstance(documentation_data["modules"], list):
+            formatted_doc += "Modules:\n"
+            for module in documentation_data["modules"]:
+                formatted_doc += f"  - {module['name']}: {module.get('description', '')}\n"
+
+        if "dependencies" in documentation_data:
+            formatted_doc += f"Dependencies: {documentation_data['dependencies']}\n"
+
+        return formatted_doc
+    # ... (existing methods)
+```
+
+
+Important Backend Notes:
+
+API Key: Make sure your Google Gemini API key is set as an environment variable (GOOGLE_API_KEY).
+
+Gemini Setup: The code initializes the GenerativeModel and ChatSession in the __init__ method of the ChatService. This is done to reuse the model and session and avoid re-initialization on every request.
+
+Prompt Engineering: The _build_prompt function is critical. The quality of the LLM's responses depends heavily on how you format the user's question, the callgraph data, and the documentation data into a clear and effective prompt.
+
+Experimentation: You will need to experiment with different prompt structures to find what works best for your data and the types of questions your users will ask.
+
+Conciseness: Be mindful of the token limits of the Gemini API. You might need to summarize or truncate the callgraph and documentation data.
+
+Context Extraction (Optional): The context_used variable is set to [] in the process_message. You can expand this by implementing code that parses the LLM response and extracts the code elements that are the most relevant to the user's query. This can involve, for example, the functions referenced in the response. If the model is able to return context used, you can use this info to highlight in the CodeContextPanel.
+
+Error Handling: The example has basic error handling. Expand it to handle different error scenarios gracefully.
+
+Model and Usage Information: The code retrieves and returns the model (e.g., "gemini-pro") and usage from the Gemini API response. You can use this data to track your API usage and costs. Note that Gemini's API does not currently provide usage metrics.
+
+Rate Limiting/Caching: Consider implementing rate limiting to prevent abuse of your API and caching strategies to improve performance, especially for frequently accessed data.
+
+In Summary:
+
+The changes focus on correctly passing data from frontend to backend, modifying the backend to construct the prompts, and calling the LLM service. Make sure to adjust the prompt engineering to ensure your application behaves as you expect. Thoroughly test this.

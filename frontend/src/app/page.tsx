@@ -11,12 +11,12 @@ export default function Home() {
       description: "Visualize code structure with interactive callgraphs enhanced with LLM insights.",
       href: "/visualize",
     },
-    {
-      icon: <MessageSquareIcon className="h-8 w-8 text-primary" />,
-      title: "Chat with LLM",
-      description: "Query your codebase using natural language and get intelligent responses.",
-      href: "/chat",
-    },
+    // {
+    //   icon: <MessageSquareIcon className="h-8 w-8 text-primary" />,
+    //   title: "Chat with LLM",
+    //   description: "Query your codebase using natural language and get intelligent responses.",
+    //   href: "/chat",
+    // },
     {
       icon: <FileTextIcon className="h-8 w-8 text-primary" />,
       title: "Automated Documentation",

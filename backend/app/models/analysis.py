@@ -9,6 +9,8 @@ router = APIRouter(prefix="/analysis")
 settings = Settings()
 
 
+from ..services.callgraph_enrichment_service import enrich_django, enrich_flask
+
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -47,30 +49,6 @@ async def generate_callgraph(
         )
 
 
-def _enrich_django(callgraph: dict) -> dict:
-    for node in callgraph["nodes"]:
-        if "views." in node["id"]:
-            node["framework"] = "django"
-            node["type"] = "view"
-            if node["id"].endswith("View"):
-                node["tags"] = ["class-based-view"]
-            elif "api_" in node["id"]:
-                node["tags"] = ["api-view"]
-    return callgraph
-
-
-def _enrich_flask(callgraph: dict) -> dict:
-    for node in callgraph["nodes"]:
-        if "routes." in node["id"] or "blueprints." in node["id"]:
-            node["framework"] = "flask"
-            node["type"] = "route"
-            if "get_" in node["id"]:
-                node["tags"] = ["http-get"]
-            elif "post_" in node["id"]:
-                node["tags"] = ["http-post"]
-    return callgraph
-
-
 @router.post("/enrich")
 async def enrich_callgraph(
     callgraph: dict,
@@ -81,9 +59,9 @@ async def enrich_callgraph(
 ):
     try:
         if framework == "django":
-            return _enrich_django(callgraph)
+            return enrich_django(callgraph)
         elif framework == "flask":
-            return _enrich_flask(callgraph)
+            return enrich_flask(callgraph)
         return callgraph
     except Exception as e:
         raise HTTPException(

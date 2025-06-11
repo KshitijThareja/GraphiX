@@ -185,7 +185,7 @@ class TypeInferenceEngine:
         """Iteratively solves the collected type constraints using unification."""
         changed = True
         iterations = 0
-        max_iterations = 100
+        max_iterations = 500
         while changed and iterations < max_iterations:
             changed = False
             iterations += 1

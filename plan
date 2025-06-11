@@ -1,0 +1,215 @@
+e1fd1e
+INFO:root:[ResearchCallgraphGenerator] TRY BLOCK START: self.repo_path = C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e, perform_cleanup = True
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\manage.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\blog\admin.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\blog\apps.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\blog\models.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\blog\tests.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\blog\urls.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\blog\views.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\blog\__init__.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\blog\migrations\0001_initial.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\blog\migrations\__init__.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\djangoproject\asgi.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\djangoproject\settings.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\djangoproject\urls.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\djangoproject\wsgi.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\djangoproject\__init__.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\users\admin.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\users\apps.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\users\forms.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\users\models.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\users\signals.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\users\tests.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\users\urls.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\users\views.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\users\__init__.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\users\migrations\0001_initial.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+ERROR:root:Error analyzing C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e\users\migrations\__init__.py with DynamicCallGraphBuilder: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'
+Traceback (most recent call last):
+  File "C:\GraphiX\backend\app\services\research_callgraph.py", line 156, in _build_dynamic_graph
+    file_specific_graph = await self.dynamic_builder.analyze_file(file_path_item)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DynamicCallGraphBuilder' object has no attribute 'analyze_file'. Did you mean: '_analyze_call'?
+INFO:root:[ResearchCallgraphGenerator] TRY BLOCK END: self.repo_path = C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e, perform_cleanup = True
+INFO:root:[ResearchCallgraphGenerator] FINALLY BLOCK START: self.repo_path = C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e, perform_cleanup = True
+INFO:root:ResearchCallgraphGenerator: Cleaning up temporary directory: C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e
+ERROR:root:Error during cleanup of C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e: [WinError 5] Access is denied: 'C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_8fe1fd1e\\.git\\objects\\pack\\pack-f58d28e6fb5479d695baf834a3bdc67b5a93a18d.idx'
+INFO:app.routers.analysis:Scheduling documentation generation for https://github.com/deliciafernandes/Connect
+INFO:app.routers.analysis:Completed callgraph generation. Type: research-grade. Framework hint: django. Endpoint Runtime: 0.00s. Generator analysis time: 2.87s. Detected framework: django.
+INFO:app.routers.analysis:Full JSON response for https://github.com/deliciafernandes/Connect: {
+  "status": "completed",
+  "data": {
+    "nodes": [],
+    "links": [],
+    "metadata": {
+      "research_grade_analysis_completed": true,
+      "files_analyzed": 0,
+      "total_files_found": 26,
+      "analysis_time_seconds": 2.87,
+      "timeout_seconds": 600,
+      "framework_analyzed_as": "django",
+      "context_sensitivity_k": 2,
+      "status": "completed",
+      "research_grade_requested": true,
+      "requested_context_sensitivity_k": 2,
+      "endpoint_runtime_seconds": 0.0,
+      "status_log_from_backend": [
+        "Received request for https://github.com/deliciafernandes/Connect",
+        "Initializing research-grade analysis with hint: django",
+        "Using research-grade generator (actual context sensitivity determined by builder)",
+        "Starting repository analysis..."
+      ]
+    }
+  },
+  "metrics": {
+    "node_count": 0,
+    "edge_count": 0
+  },
+  "status_log": [
+    "Received request for https://github.com/deliciafernandes/Connect",
+    "Initializing research-grade analysis with hint: django",
+    "Using research-grade generator (actual context sensitivity determined by builder)",
+    "Starting repository analysis..."
+  ],
+  "documentation_id": "aeab19fd-289f-4327-830a-3c577c52099e"
+}
+INFO:     127.0.0.1:60597 - "POST /analysis/callgraph HTTP/1.1" 200 OK
+INFO:app.routers.analysis:Starting documentation generation for https://github.com/deliciafernandes/Connect
+INFO:app.routers.analysis:Using existing callgraph data for documentation
+INFO:app.services.documentation_service:Extracting documentation from callgraph data
+INFO:app.services.documentation_service:Extracting documentation from callgraph nodes and generating missing docstrings with LLM.
+INFO:app.utils.ast_generator:Python parser initialized successfully with Tree-sitter.
+INFO:app.services.llm_doc_generator_service:Using Gemini API key from Pydantic settings (loaded from .env).
+INFO:app.services.llm_doc_generator_service:LLMDocGeneratorService initialized successfully with Gemini model: models/gemini-2.0-flash-lite
+INFO:app.services.documentation_service:LLMDocGeneratorService initialized for docstring generation.
+INFO:app.services.documentation_service:Documentation extraction and generation complete. Found: 0 modules, 0 classes, 0 functions.
+INFO:app.routers.analysis:Documentation generation completed for https://github.com/deliciafernandes/Connect
+INFO:app.routers.analysis:Background task cleaning up temporary directory: C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e
+ERROR:app.routers.analysis:Error during background cleanup of C:\Users\saran\AppData\Local\Temp\graphix_Connect_8fe1fd1e: [WinError 5] Access is denied: 'C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_8fe1fd1e\\.git\\objects\\pack\\pack-f58d28e6fb5479d695baf834a3bdc67b5a93a18d.idx'
+DEBUG:pymongo.topology:{"message": "Server heartbeat succeeded", "topologyId": {"$oid": "6848ecf297166713cf9f8ceb"}, "driverConnectionId": 1, "serverConnectionId": 86, "serverHost": "localhost", "serverPort": 27017, "awaited": true, "durationMS": 10000.0, "reply": "{\"isWritablePrimary\": true, \"topologyVersion\": {\"processId\": {\"$oid\": \"6846728d9c4d0f30d3364

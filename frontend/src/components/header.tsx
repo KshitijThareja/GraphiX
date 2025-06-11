@@ -8,6 +8,7 @@ import {
   BarChartIcon,
   FileTextIcon,
   GitlabIcon as GitHubIcon,
+  MessageSquareIcon,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ export default function Header() {
   const navItems = [
     { name: "Home", href: "/", icon: HomeIcon },
     { name: "Visualize", href: "/visualize", icon: BarChartIcon },
+    { name: "Chat", href: "/chat", icon: MessageSquareIcon },
     { name: "Documentation", href: "/documentation", icon: FileTextIcon },
     { name: "Repositories", href: "/repositories", icon: GitHubIcon },
   ];

@@ -22,12 +22,15 @@ interface ChatInterfaceProps {
   onHighlightNode?: (nodeId: string) => void;
 }
 
+// ... (rest of your imports)
+
+// Interface and Component Definition
 export default function ChatInterface({
   repositoryId,
   className,
   onHighlightNode,
 }: ChatInterfaceProps) {
-  const { repoUrl } = useCallgraph();
+  const { repoUrl, callgraphData, documentation } = useCallgraph();
   const [messages, setMessages] = useState<MessageProps[]>([
     {
       role: "assistant",
@@ -38,7 +41,6 @@ export default function ChatInterface({
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
   const [codeContext, setCodeContext] = useState<CodeContext[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -51,51 +53,14 @@ export default function ChatInterface({
     scrollToBottom();
   }, [messages]);
 
-  // Create a new chat session when component mounts
-  useEffect(() => {
-    const createSession = async () => {
-      if (!repositoryId && !repoUrl) return;
-
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/chat/sessions`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-            body: JSON.stringify({
-              repository_id: repositoryId || repoUrl,
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(await response.text());
-        }
-
-        const data = await response.json();
-        setSessionId(data.session_id);
-      } catch (error) {
-        toast({
-          title: "Failed to create chat session",
-          description:
-            error instanceof Error ? error.message : "Unknown error occurred",
-          variant: "destructive",
-        });
-      }
-    };
-
-    createSession();
-  }, [repositoryId, repoUrl]);
-
   const handleSendMessage = async () => {
     if (!input.trim()) return;
-    if (!sessionId) {
+    
+    // Check if we have the necessary context data
+    if (!callgraphData) {
       toast({
-        title: "No active session",
-        description: "Please wait for the chat session to initialize",
+        title: "Missing callgraph data",
+        description: "Please wait for the callgraph analysis to complete",
         variant: "destructive",
       });
       return;
@@ -113,7 +78,7 @@ export default function ChatInterface({
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/chat/sessions/${sessionId}/messages`,
+        `${process.env.NEXT_PUBLIC_API_URL}/analysis/chat`,
         {
           method: "POST",
           headers: {
@@ -121,7 +86,10 @@ export default function ChatInterface({
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
           body: JSON.stringify({
-            content: input,
+            query: input,
+            repo_url: repoUrl,
+            callgraph_data: callgraphData, // Add callgraph data as context
+            documentation_data: documentation, // Add documentation data as context
           }),
         }
       );
@@ -132,21 +100,40 @@ export default function ChatInterface({
 
       const data = await response.json();
       
-      // Extract context used from the response
-      const contextUsed = data.context_used || [];
+      // Extract context used from the callgraph data
+      let contextUsed: CodeContext[] = [];
       
-      // Transform context items into our CodeContext format
-      const newCodeContext = contextUsed.map((ctx: any) => ({
-        id: ctx.id || `ctx-${Math.random().toString(36).substr(2, 9)}`,
-        name: ctx.name || ctx.id?.split('/').pop() || 'Code snippet',
-        type: ctx.type || 'unknown',
-        file: ctx.file || 'Unknown location',
-        code: ctx.content || ctx.code || '',
-        line_start: ctx.line_start,
-        line_end: ctx.line_end
-      }));
-
-      setCodeContext(newCodeContext);
+      if (callgraphData && callgraphData.nodes) {
+        // Find relevant nodes based on the query and response
+        const relevantNodes = callgraphData.nodes.filter((node: any) => {
+          if (!node) return false;
+          
+          // Check if node name or docstring is mentioned in the response
+          const nodeName = node.id?.split('.').pop()?.toLowerCase() || '';
+          const docstring = node.metadata?.docstring?.toLowerCase() || '';
+          const responseText = data.response.toLowerCase();
+          const queryText = input.toLowerCase();
+          
+          return (
+            responseText.includes(nodeName) || 
+            queryText.includes(nodeName) ||
+            (docstring && responseText.includes(docstring.substring(0, 15)))
+          );
+        }).slice(0, 5); // Limit to top 5 most relevant nodes
+        
+        // Convert nodes to CodeContext format
+        contextUsed = relevantNodes.map((node: any) => ({
+          id: node.id,
+          name: node.id.split('.').pop() || 'Function',
+          type: node.type || 'function',
+          file: node.file || 'Unknown location',
+          code: node.metadata?.code || '',
+          line_start: node.line_start,
+          line_end: node.line_end
+        }));
+      }
+      
+      setCodeContext(contextUsed);
 
       const assistantMessage: MessageProps = {
         role: "assistant",
@@ -162,7 +149,7 @@ export default function ChatInterface({
           error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive",
       });
-      
+
       // Add error message
       setMessages((prev) => [
         ...prev,
@@ -187,10 +174,9 @@ export default function ChatInterface({
   const handleCodeHighlight = (item: CodeContext) => {
     if (onHighlightNode) {
       // Extract the node ID from the context item
-      // This will depend on how your graph nodes are identified
       const nodeId = item.id;
       onHighlightNode(nodeId);
-      
+
       toast({
         title: "Node highlighted",
         description: `Highlighted ${item.name} in the callgraph`,
@@ -200,10 +186,10 @@ export default function ChatInterface({
 
   const handleCodeFromMessage = (code: string) => {
     // Search for the code in context or try to find a matching node
-    const matchingContext = codeContext.find(ctx => 
+    const matchingContext = codeContext.find(ctx =>
       ctx.code.includes(code) || code.includes(ctx.code)
     );
-    
+
     if (matchingContext && onHighlightNode) {
       onHighlightNode(matchingContext.id);
       toast({
@@ -259,13 +245,13 @@ export default function ChatInterface({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={isLoading || !sessionId}
               className="flex-1"
+              disabled={!callgraphData}
             />
             <Button
               size="icon"
               onClick={handleSendMessage}
-              disabled={isLoading || !input.trim() || !sessionId}
+              disabled={!callgraphData || isLoading}
             >
               {isLoading ? (
                 <RefreshCw className="h-4 w-4 animate-spin" />
@@ -276,11 +262,11 @@ export default function ChatInterface({
           </div>
         </CardFooter>
       </Card>
-      
+
       <div className="col-span-1 h-full">
-        <CodeContextPanel 
-          contextItems={codeContext} 
-          onItemHighlight={handleCodeHighlight} 
+        <CodeContextPanel
+          contextItems={codeContext}
+          onItemHighlight={handleCodeHighlight}
         />
       </div>
     </div>

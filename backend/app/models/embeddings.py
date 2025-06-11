@@ -31,7 +31,7 @@ class EmbeddingDB(EmbeddingBase):
     updated_at: Optional[datetime.datetime] = Field(None, description="When the embedding was last updated")
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class EmbeddingResponse(BaseModel):
     """Response model for embedding queries"""

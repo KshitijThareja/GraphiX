@@ -11,7 +11,7 @@ from fastapi import (
 )
 from fastapi.responses import JSONResponse, StreamingResponse
 from typing import Optional, List
-from pydantic import HttpUrl, BaseModel
+from pydantic import HttpUrl, BaseModel, validator
 from sqlalchemy import JSON, Column, DateTime, Float, Integer, String
 from sqlalchemy.orm import Session
 import os
@@ -31,6 +31,7 @@ from ..services.auth import get_current_user
 from ..models.base import Base, oauth2_scheme, settings, get_db
 import traceback
 import google.generativeai as genai
+import shutil
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analysis")
@@ -75,6 +76,30 @@ class DatasetRequest(BaseModel):
 class ChatRequest(BaseModel):
     query: str
     repo_url: Optional[HttpUrl] = None
+    callgraph_data: Optional[dict] = None
+    documentation_data: Optional[dict] = None
+    
+    class Config:
+        arbitrary_types_allowed = True
+        extra = "allow"
+        
+    @validator('query')
+    def query_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError('Query cannot be empty')
+        return v
+        
+    @validator('callgraph_data')
+    def validate_callgraph_data(cls, v):
+        if v is not None and not isinstance(v, dict):
+            raise ValueError('Callgraph data must be a dictionary or null')
+        return v
+        
+    @validator('documentation_data')
+    def validate_documentation_data(cls, v):
+        if v is not None and not isinstance(v, dict):
+            raise ValueError('Documentation data must be a dictionary or null')
+        return v
 
 
 @router.post("/generate-callgraph")
@@ -154,9 +179,7 @@ async def generate_callgraph(
     db: Session = Depends(get_db),
     background_tasks: BackgroundTasks = None,
 ):
-    status_log = [] # Initialize status_log here
-    status_log.append(f"Received request for {request_model.repo_url}")
-    status_log = [] # Initialize status_log here
+    status_log = []
     status_log.append(f"Received request for {request_model.repo_url}")
 
     try:
@@ -178,9 +201,10 @@ async def generate_callgraph(
             logger.info(f"Using standard callgraph generator for {repo_url}")
             generator = CallgraphGenerator()
 
-        # Generate callgraph
+        # This one call now correctly runs the entire analysis chain.
+        # We set perform_cleanup=False because the background task will handle it.
         callgraph = await generator.analyze_repository(
-            repo_path=repo_url, timeout=600, clone=is_remote
+            repo_path=repo_url, timeout=600, perform_cleanup=False
         )
 
         # Store the result in the database
@@ -228,9 +252,9 @@ async def generate_callgraph(
                 documentation_id,
                 repository_id,
                 repo_url,
-                is_remote,
                 callgraph,
-                request_model.framework_hint
+                request_model.framework_hint,
+                generator.temp_repo_path # Pass the temporary path for cleanup
             )
         else:
             # If no background_tasks available, start a task directly
@@ -240,9 +264,9 @@ async def generate_callgraph(
                     documentation_id,
                     repository_id,
                     repo_url,
-                    is_remote,
                     callgraph,
-                    request_model.framework_hint
+                    request_model.framework_hint,
+                    generator.temp_repo_path # Pass the temporary path for cleanup
                 )
             )
         
@@ -324,6 +348,7 @@ async def generate_callgraph(
                 "edge_count": len(callgraph.get("links", [])),
             },
             "status_log": status_log,
+            "documentation_id": documentation_id  # <-- CRUCIAL: Ensure this line is here
         }
         logger.info(
             f"Full JSON response for {request_model.repo_url}: {json.dumps(final_response_data, indent=2, default=str)}"
@@ -358,10 +383,10 @@ async def generate_callgraph(
             },
         )
     finally:
-        if generator:
-            await generator.cleanup()
-        status_log.append("Cleanup complete.")
+        # Cleanup is now handled by the background task
+        status_log.append("Initial request processing complete. Documentation generation and cleanup in background.")
 
+from ..services.callgraph_enrichment_service import enrich_django, enrich_flask
 
 @router.post("/enrich")
 async def enrich_callgraph(
@@ -373,9 +398,9 @@ async def enrich_callgraph(
 ):
     try:
         if framework == "django":
-            return _enrich_django(callgraph)
+            return enrich_django(callgraph)
         elif framework == "flask":
-            return _enrich_flask(callgraph)
+            return enrich_flask(callgraph)
         return callgraph
     except Exception as e:
         raise HTTPException(
@@ -453,20 +478,85 @@ async def benchmark(
 
 @router.post("/chat")
 async def chat_with_llm(
-    request: ChatRequest, current_user: User = Depends(get_current_user)
+    request: Request, current_user: User = Depends(get_current_user)
 ):
     try:
-        query = request.query
-        if not query:
+        # Get raw request data for debugging
+        raw_data = await request.json()
+        logger.info(f"Received raw chat request data: {raw_data}")
+        
+        # Validate manually
+        if "query" not in raw_data or not raw_data["query"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Query is required"
             )
-        context = "No codebase context provided."
-        if request.repo_url:
+        
+        query = raw_data["query"]
+        repo_url = raw_data.get("repo_url")
+        callgraph_data = raw_data.get("callgraph_data")
+        documentation_data = raw_data.get("documentation_data")
+        
+        # Build context from provided data
+        context = ""
+        
+        # Add callgraph data to context if available
+        if callgraph_data and isinstance(callgraph_data, dict):
+            context += "Codebase Structure Context:\n"
+            
+            # Add nodes information
+            if "nodes" in callgraph_data and callgraph_data["nodes"]:
+                for node in callgraph_data["nodes"][:50]:  # Limit to 50 nodes to avoid token limits
+                    node_id = node.get("id", "Unknown")
+                    node_type = node.get("type", "Unknown")
+                    
+                    # Extract metadata if available
+                    metadata = node.get("metadata", {})
+                    docstring = metadata.get("docstring", "No docstring available.")
+                    complexity = node.get("complexity", "N/A")
+                    
+                    context += f"- {node_type.capitalize()}: {node_id}\n"
+                    if len(docstring) > 200:
+                        docstring = docstring[:200] + "..."
+                    context += f"  Docstring: {docstring}\n"
+                    context += f"  Complexity: {complexity}\n"
+            
+            # Add relationships information
+            if "links" in callgraph_data and callgraph_data["links"]:
+                context += "\nCode Relationships:\n"
+                for link in callgraph_data["links"][:30]:  # Limit to 30 links
+                    source = link.get("source", "Unknown")
+                    target = link.get("target", "Unknown")
+                    link_type = link.get("type", "Unknown")
+                    context += f"- {source} -> {target} ({link_type})\n"
+        
+        # Add documentation data to context if available
+        if documentation_data and isinstance(documentation_data, dict):
+            context += "\nDocumentation Context:\n"
+            
+            # Add overview if available
+            if "overview" in documentation_data:
+                context += f"Overview: {documentation_data['overview']}\n\n"
+            
+            # Add architecture if available
+            if "architecture" in documentation_data:
+                context += f"Architecture: {documentation_data['architecture']}\n\n"
+            
+            # Add modules information
+            if "modules" in documentation_data and documentation_data["modules"]:
+                context += "Key Modules:\n"
+                for module in documentation_data["modules"][:10]:  # Limit to 10 modules
+                    module_name = module.get("name", "Unknown")
+                    module_desc = module.get("docstring", "")
+                    if len(module_desc) > 200:
+                        module_desc = module_desc[:200] + "..."
+                    context += f"- {module_name}: {module_desc}\n"
+        
+        # If no context was provided, try to analyze the repository
+        if not context and repo_url:
             generator = CallgraphGenerator()
             try:
                 repo_path = await generator.clone_repository(
-                    str(request.repo_url), current_user.access_token
+                    str(repo_url), current_user.access_token
                 )
                 callgraph = await generator.analyze_repository(repo_path)
                 await generator.cleanup()
@@ -485,16 +575,29 @@ async def chat_with_llm(
             except Exception as e:
                 logger.error("Failed to analyze repository for context: " f"{str(e)}")
                 context = f"Failed to analyze repository: {str(e)}"
+        
+        # If still no context, set a default message
+        if not context:
+            context = "No codebase context provided."
+        
+        # Create the prompt for the LLM
         prompt = (
             f"Given the following codebase context:\n{context}\n\n"
             f"Answer the following question about the codebase:\n{query}"
         )
+        
+        # Generate the response
         response = flash_model.generate_content(
             prompt,
-            generation_config=genai.types.GenerationConfig(max_output_tokens=150),
+            generation_config=genai.types.GenerationConfig(
+                max_output_tokens=500,  # Increased token limit for more detailed responses
+                temperature=0.2,  # Lower temperature for more factual responses
+            ),
         )
+        
         return {"response": response.text}
     except Exception as e:
+        logger.error(f"Error in chat_with_llm: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process chat query: {str(e)}",
@@ -505,9 +608,9 @@ async def _generate_documentation_background(
     documentation_id: str,
     repository_id: str,
     repo_url: str,
-    is_remote: bool,
     callgraph: dict = None,
-    framework_hint: str = "generic"
+    framework_hint: str = "generic",
+    temp_repo_path: Optional[str] = None # Add temp_repo_path for cleanup
 ):
     """
     Background task to generate documentation based on callgraph data.
@@ -518,36 +621,36 @@ async def _generate_documentation_background(
     
     try:
         logger.info(f"Starting documentation generation for {repo_url}")
-        documentation_service = DocumentationService(framework_hint=framework_hint)
-        
+        documentation_service = DocumentationService(
+            framework_hint=framework_hint, 
+            repository_id=repository_id # Ensure this is passed
+        )
         # Use the callgraph data if provided, otherwise analyze the repository
         if callgraph:
             logger.info("Using existing callgraph data for documentation")
             # Extract documentation from callgraph
-            doc_result = await documentation_service.generate_from_callgraph(
-                repo_path=repo_url if not is_remote else None,
-                callgraph_result=callgraph,
-                clone=is_remote
+            if "metadata" not in callgraph:
+                callgraph["metadata"] = {}
+            if "repository_id" not in callgraph["metadata"]:
+                callgraph["metadata"]["repository_id"] = repository_id
+
+            documentation_result = await documentation_service.generate_from_callgraph(
+                callgraph_result=callgraph
             )
-        else:
-            # Clone and analyze repository if callgraph not provided
-            logger.info("Analyzing repository for documentation")
-            doc_result = await documentation_service.analyze_repository(
-                repo_path=repo_url,
-                timeout=600,
-                clone=is_remote
-            )
+        # If callgraph generation failed, documentation_result will be None or an error.
+        # The direct documentation generation from repo_path by DocumentationService was removed.
+        # We now rely on generate_from_callgraph which uses in-memory data.
         
         # Count the elements by type
-        modules_count = len(doc_result.get("modules", []))
-        classes_count = len(doc_result.get("classes", []))
-        functions_count = len(doc_result.get("functions", []))
+        modules_count = len(documentation_result.get("modules", []))
+        classes_count = len(documentation_result.get("classes", []))
+        functions_count = len(documentation_result.get("functions", []))
         
         # Update documentation store with results
         if documentation_id in documentation_store:
             documentation_store[documentation_id].update({
                 "status": "completed",
-                "documentation": doc_result,
+                "documentation": documentation_result,
                 "modules_count": modules_count,
                 "classes_count": classes_count,
                 "functions_count": functions_count,
@@ -559,13 +662,13 @@ async def _generate_documentation_background(
             
             # Generate markdown documentation
             try:
-                markdown_doc = await documentation_service.generate_markdown_documentation(doc_result)
+                markdown_doc = await documentation_service.generate_markdown_documentation(documentation_result)
                 documentation_store[documentation_id]["markdown_files"] = {"README.md": markdown_doc}
                 
                 # Add a summary for frontend display
-                modules_count = len(doc_result.get("modules", []))
-                classes_count = len(doc_result.get("classes", []))
-                functions_count = len(doc_result.get("functions", []))
+                modules_count = len(documentation_result.get("modules", []))
+                classes_count = len(documentation_result.get("classes", []))
+                functions_count = len(documentation_result.get("functions", []))
                 
                 documentation_store[documentation_id]["summary"] = {
                     "modules": modules_count,
@@ -592,6 +695,14 @@ async def _generate_documentation_background(
                 "status": "failed",
                 "error": str(e)
             })
+    finally:
+        if temp_repo_path and os.path.exists(temp_repo_path):
+            logger.info(f"Background task cleaning up temporary directory: {temp_repo_path}")
+            try:
+                shutil.rmtree(temp_repo_path)
+            except Exception as e_cleanup:
+                logger.error(f"Error during background cleanup of {temp_repo_path}: {e_cleanup}")
+
 
 
 @router.post("/documentation")
@@ -631,7 +742,8 @@ async def generate_documentation(
                 repo_url,
                 is_remote,
                 None,  # No callgraph, will generate as needed
-                request.framework_hint
+                request.framework_hint,
+                None # No temp_repo_path for this path, as callgraph is not generated here
             )
         else:
             # If no background_tasks available, start a task directly
@@ -642,7 +754,8 @@ async def generate_documentation(
                     repo_url,
                     is_remote,
                     None,  # No callgraph, will generate as needed
-                    request.framework_hint
+                request.framework_hint,
+                None # No temp_repo_path for this path, as callgraph is not generated here
                 )
             )
         

@@ -1,0 +1,2274 @@
+{
+    "status": "completed",
+    "data": {
+        "nodes": [
+            {
+                "id": "manage",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\manage.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "manage.main",
+                "type": "function",
+                "metadata": {
+                    "args": [],
+                    "lineno": 7,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\manage.py",
+                    "category": "function_definition"
+                }
+            },
+            {
+                "id": "<ComplexCall>.setdefault",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\manage.py",
+                    "file_occurrences": [
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\asgi.py",
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\wsgi.py"
+                    ]
+                }
+            },
+            {
+                "id": "manage.ImportError",
+                "type": "class",
+                "metadata": {
+                    "category": "external_entity",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\manage.py"
+                }
+            },
+            {
+                "id": "manage.execute_from_command_line",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\manage.py"
+                }
+            },
+            {
+                "id": "<unknown_module>.main",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\manage.py"
+                }
+            },
+            {
+                "id": "blog.admin",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\admin.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "<ComplexCall>.register",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\admin.py",
+                    "file_occurrences": [
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\admin.py"
+                    ]
+                }
+            },
+            {
+                "id": "blog.apps",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\apps.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "blog.apps.BlogConfig",
+                "type": "class",
+                "metadata": {
+                    "bases": [
+                        "AppConfig"
+                    ],
+                    "lineno": 3,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\apps.py",
+                    "category": "class_definition"
+                }
+            },
+            {
+                "id": "AppConfig",
+                "type": "class",
+                "metadata": {
+                    "category": "external_class",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\apps.py",
+                    "file_occurrences": [
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\apps.py"
+                    ]
+                }
+            },
+            {
+                "id": "blog.models",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\models.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "blog.models.Post",
+                "type": "class",
+                "metadata": {
+                    "bases": [
+                        "models.Model"
+                    ],
+                    "lineno": 8,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\models.py",
+                    "category": "class_definition"
+                }
+            },
+            {
+                "id": "models.Model",
+                "type": "class",
+                "metadata": {
+                    "category": "external_entity",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\models.py",
+                    "file_occurrences": [
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py"
+                    ]
+                }
+            },
+            {
+                "id": "django.db.models.CharField",
+                "type": "class",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\models.py",
+                    "file_occurrences": [
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\0001_initial.py"
+                    ]
+                }
+            },
+            {
+                "id": "django.db.models.TextField",
+                "type": "class",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\models.py",
+                    "file_occurrences": [
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\0001_initial.py"
+                    ]
+                }
+            },
+            {
+                "id": "django.db.models.DateTimeField",
+                "type": "class",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\models.py",
+                    "file_occurrences": [
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\0001_initial.py"
+                    ]
+                }
+            },
+            {
+                "id": "Post",
+                "type": "class",
+                "metadata": {
+                    "category": "external_class",
+                    "is_placeholder": true
+                }
+            },
+            {
+                "id": "User",
+                "type": "class",
+                "metadata": {
+                    "category": "external_class",
+                    "is_placeholder": true,
+                    "file_occurrences": [
+                        ""
+                    ]
+                }
+            },
+            {
+                "id": "django.db.models.ForeignKey",
+                "type": "class",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\models.py",
+                    "file_occurrences": [
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\0001_initial.py"
+                    ]
+                }
+            },
+            {
+                "id": "blog.models.Post.__str__",
+                "type": "function",
+                "metadata": {
+                    "args": [
+                        "self"
+                    ],
+                    "lineno": 26,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\models.py",
+                    "category": "function_definition"
+                }
+            },
+            {
+                "id": "blog.models.Post.get_absolute_url",
+                "type": "function",
+                "metadata": {
+                    "args": [
+                        "self"
+                    ],
+                    "lineno": 29,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\models.py",
+                    "category": "function_definition"
+                }
+            },
+            {
+                "id": "django.reverse",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\models.py"
+                }
+            },
+            {
+                "id": "blog.tests",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\tests.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "blog.urls",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\urls.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "django.path",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\urls.py",
+                    "file_occurrences": [
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\urls.py"
+                    ]
+                }
+            },
+            {
+                "id": "<UnknownClass>.as_view",
+                "type": "class",
+                "metadata": {
+                    "category": "unresolved_class",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\urls.py"
+                }
+            },
+            {
+                "id": "blog.views",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "blog.views.home",
+                "type": "function",
+                "metadata": {
+                    "args": [
+                        "request"
+                    ],
+                    "lineno": 11,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py",
+                    "category": "function_definition"
+                }
+            },
+            {
+                "id": "<ComplexCall>.all",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "id": "django.render",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py",
+                    "file_occurrences": [
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                    ]
+                }
+            },
+            {
+                "id": "blog.views.PostListView",
+                "type": "class",
+                "metadata": {
+                    "bases": [
+                        "ListView"
+                    ],
+                    "lineno": 18,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py",
+                    "category": "class_definition"
+                }
+            },
+            {
+                "id": "ListView",
+                "type": "class",
+                "metadata": {
+                    "category": "external_class",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "id": "blog.views.UserPostListView",
+                "type": "class",
+                "metadata": {
+                    "bases": [
+                        "ListView"
+                    ],
+                    "lineno": 41,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py",
+                    "category": "class_definition"
+                }
+            },
+            {
+                "id": "blog.views.UserPostListView.get_queryset",
+                "type": "function",
+                "metadata": {
+                    "args": [
+                        "self"
+                    ],
+                    "lineno": 49,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py",
+                    "category": "function_definition"
+                }
+            },
+            {
+                "id": "django.get_object_or_404",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "id": "<ComplexCall>.get",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py",
+                    "file_occurrences": [
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\settings.py",
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                    ]
+                }
+            },
+            {
+                "id": "<ComplexCall>.order_by",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "id": "<ComplexCall>.filter",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "id": "blog.views.PostDetailView",
+                "type": "class",
+                "metadata": {
+                    "bases": [
+                        "DetailView"
+                    ],
+                    "lineno": 59,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py",
+                    "category": "class_definition"
+                }
+            },
+            {
+                "id": "DetailView",
+                "type": "class",
+                "metadata": {
+                    "category": "external_class",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "id": "blog.views.PostCreateView",
+                "type": "class",
+                "metadata": {
+                    "bases": [
+                        "LoginRequiredMixin",
+                        "CreateView"
+                    ],
+                    "lineno": 63,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py",
+                    "category": "class_definition"
+                }
+            },
+            {
+                "id": "LoginRequiredMixin",
+                "type": "class",
+                "metadata": {
+                    "category": "external_class",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "id": "CreateView",
+                "type": "class",
+                "metadata": {
+                    "category": "external_class",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "id": "blog.views.PostCreateView.form_valid",
+                "type": "function",
+                "metadata": {
+                    "args": [
+                        "self",
+                        "form"
+                    ],
+                    "lineno": 69,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py",
+                    "category": "function_definition"
+                }
+            },
+            {
+                "id": "<ComplexCall>.form_valid",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "id": "blog.views.PostCreateView.super",
+                "type": "function",
+                "metadata": {
+                    "category": "external_entity",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "id": "blog.views.PostUpdateView",
+                "type": "class",
+                "metadata": {
+                    "bases": [
+                        "LoginRequiredMixin",
+                        "UserPassesTestMixin",
+                        "UpdateView"
+                    ],
+                    "lineno": 78,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py",
+                    "category": "class_definition"
+                }
+            },
+            {
+                "id": "UserPassesTestMixin",
+                "type": "class",
+                "metadata": {
+                    "category": "external_class",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "id": "UpdateView",
+                "type": "class",
+                "metadata": {
+                    "category": "external_class",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "id": "blog.views.PostUpdateView.form_valid",
+                "type": "function",
+                "metadata": {
+                    "args": [
+                        "self",
+                        "form"
+                    ],
+                    "lineno": 81,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py",
+                    "category": "function_definition"
+                }
+            },
+            {
+                "id": "blog.views.PostUpdateView.super",
+                "type": "function",
+                "metadata": {
+                    "category": "external_entity",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "id": "blog.views.PostUpdateView.test_func",
+                "type": "function",
+                "metadata": {
+                    "args": [
+                        "self"
+                    ],
+                    "lineno": 86,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py",
+                    "category": "function_definition"
+                }
+            },
+            {
+                "id": "PostUpdateView.get_object",
+                "type": "function",
+                "metadata": {
+                    "category": "external_entity",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "id": "blog.views.PostDeleteView",
+                "type": "class",
+                "metadata": {
+                    "bases": [
+                        "LoginRequiredMixin",
+                        "UserPassesTestMixin",
+                        "DeleteView"
+                    ],
+                    "lineno": 100,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py",
+                    "category": "class_definition"
+                }
+            },
+            {
+                "id": "DeleteView",
+                "type": "class",
+                "metadata": {
+                    "category": "external_class",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "id": "blog.views.PostDeleteView.test_func",
+                "type": "function",
+                "metadata": {
+                    "args": [
+                        "self"
+                    ],
+                    "lineno": 105,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py",
+                    "category": "function_definition"
+                }
+            },
+            {
+                "id": "PostDeleteView.get_object",
+                "type": "function",
+                "metadata": {
+                    "category": "external_entity",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "id": "blog.views.about",
+                "type": "function",
+                "metadata": {
+                    "args": [
+                        "request"
+                    ],
+                    "lineno": 118,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py",
+                    "category": "function_definition"
+                }
+            },
+            {
+                "id": "blog.__init__",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\__init__.py",
+                    "category": "package_init"
+                }
+            },
+            {
+                "id": "blog.migrations.0001_initial",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\0001_initial.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "blog.migrations.0001_initial.Migration",
+                "type": "class",
+                "metadata": {
+                    "bases": [
+                        "migrations.Migration"
+                    ],
+                    "lineno": 9,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\0001_initial.py",
+                    "category": "class_definition"
+                }
+            },
+            {
+                "id": "migrations.Migration",
+                "type": "class",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\0001_initial.py",
+                    "file_occurrences": [
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\migrations\\0001_initial.py"
+                    ]
+                }
+            },
+            {
+                "id": "<UnknownClass>.swappable_dependency",
+                "type": "class",
+                "metadata": {
+                    "category": "unresolved_class",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\0001_initial.py",
+                    "file_occurrences": [
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\migrations\\0001_initial.py"
+                    ]
+                }
+            },
+            {
+                "id": "<UnknownClass>.CreateModel",
+                "type": "class",
+                "metadata": {
+                    "category": "unresolved_class",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\0001_initial.py",
+                    "file_occurrences": [
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\migrations\\0001_initial.py"
+                    ]
+                }
+            },
+            {
+                "id": "models.AutoField",
+                "type": "class",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\0001_initial.py",
+                    "file_occurrences": [
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\migrations\\0001_initial.py"
+                    ]
+                }
+            },
+            {
+                "id": "Migration",
+                "type": "class",
+                "metadata": {
+                    "category": "external_class",
+                    "is_placeholder": true,
+                    "file_occurrences": [
+                        ""
+                    ]
+                }
+            },
+            {
+                "id": "unknown",
+                "type": "module",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_occurrences": [
+                        ""
+                    ]
+                }
+            },
+            {
+                "id": "blog.migrations.__init__",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\__init__.py",
+                    "category": "package_init"
+                }
+            },
+            {
+                "id": "djangoproject.asgi",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\asgi.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "<unknown_module>.get_asgi_application",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\asgi.py"
+                }
+            },
+            {
+                "id": "djangoproject.settings",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\settings.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "<ComplexCall>.dirname",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\settings.py"
+                }
+            },
+            {
+                "id": "<ComplexCall>.abspath",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\settings.py"
+                }
+            },
+            {
+                "id": "<ComplexCall>.join",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\settings.py"
+                }
+            },
+            {
+                "id": "djangoproject.urls",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\urls.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "django.include",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\urls.py"
+                }
+            },
+            {
+                "id": "<ComplexCall>.as_view",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\urls.py"
+                }
+            },
+            {
+                "id": "django.static",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\urls.py"
+                }
+            },
+            {
+                "id": "djangoproject.wsgi",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\wsgi.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "<unknown_module>.get_wsgi_application",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\wsgi.py"
+                }
+            },
+            {
+                "id": "djangoproject.__init__",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\__init__.py",
+                    "category": "package_init"
+                }
+            },
+            {
+                "id": "users.admin",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\admin.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "users.apps",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\apps.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "users.apps.UsersConfig",
+                "type": "class",
+                "metadata": {
+                    "bases": [
+                        "AppConfig"
+                    ],
+                    "lineno": 3,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\apps.py",
+                    "category": "class_definition"
+                }
+            },
+            {
+                "id": "users.apps.UsersConfig.ready",
+                "type": "function",
+                "metadata": {
+                    "args": [
+                        "self"
+                    ],
+                    "lineno": 7,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\apps.py",
+                    "category": "function_definition"
+                }
+            },
+            {
+                "id": "users.forms",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\forms.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "users.forms.UserRegisterForm",
+                "type": "class",
+                "metadata": {
+                    "bases": [
+                        "UserCreationForm"
+                    ],
+                    "lineno": 6,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\forms.py",
+                    "category": "class_definition"
+                }
+            },
+            {
+                "id": "UserCreationForm",
+                "type": "class",
+                "metadata": {
+                    "category": "external_class",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\forms.py"
+                }
+            },
+            {
+                "id": "django.forms.EmailField",
+                "type": "class",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\forms.py"
+                }
+            },
+            {
+                "id": "users.forms.UserRegisterForm.Meta",
+                "type": "class",
+                "metadata": {
+                    "bases": [],
+                    "lineno": 12,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\forms.py",
+                    "category": "class_definition"
+                }
+            },
+            {
+                "id": "users.forms.UserUpdateForm",
+                "type": "class",
+                "metadata": {
+                    "bases": [
+                        "forms.ModelForm"
+                    ],
+                    "lineno": 22,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\forms.py",
+                    "category": "class_definition"
+                }
+            },
+            {
+                "id": "forms.ModelForm",
+                "type": "class",
+                "metadata": {
+                    "category": "external_entity",
+                    "is_placeholder": true,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\forms.py"
+                }
+            },
+            {
+                "id": "users.forms.UserUpdateForm.Meta",
+                "type": "class",
+                "metadata": {
+                    "bases": [],
+                    "lineno": 25,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\forms.py",
+                    "category": "class_definition"
+                }
+            },
+            {
+                "id": "users.forms.ProfileUpdateForm",
+                "type": "class",
+                "metadata": {
+                    "bases": [
+                        "forms.ModelForm"
+                    ],
+                    "lineno": 33,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\forms.py",
+                    "category": "class_definition"
+                }
+            },
+            {
+                "id": "users.forms.ProfileUpdateForm.Meta",
+                "type": "class",
+                "metadata": {
+                    "bases": [],
+                    "lineno": 34,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\forms.py",
+                    "category": "class_definition"
+                }
+            },
+            {
+                "id": "users.models",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "users.models.Profile",
+                "type": "class",
+                "metadata": {
+                    "bases": [
+                        "models.Model"
+                    ],
+                    "lineno": 5,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py",
+                    "category": "class_definition"
+                }
+            },
+            {
+                "id": "Profile",
+                "type": "class",
+                "metadata": {
+                    "category": "external_class",
+                    "is_placeholder": true
+                }
+            },
+            {
+                "id": "django.db.models.OneToOneField",
+                "type": "class",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py",
+                    "file_occurrences": [
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\migrations\\0001_initial.py"
+                    ]
+                }
+            },
+            {
+                "id": "django.db.models.ImageField",
+                "type": "class",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py",
+                    "file_occurrences": [
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\migrations\\0001_initial.py"
+                    ]
+                }
+            },
+            {
+                "id": "users.models.Profile.__str__",
+                "type": "function",
+                "metadata": {
+                    "args": [
+                        "self"
+                    ],
+                    "lineno": 15,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py",
+                    "category": "function_definition"
+                }
+            },
+            {
+                "id": "users.models.Profile.save",
+                "type": "function",
+                "metadata": {
+                    "args": [
+                        "self"
+                    ],
+                    "lineno": 19,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py",
+                    "category": "function_definition"
+                }
+            },
+            {
+                "id": "<ComplexCall>.save",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py",
+                    "file_occurrences": [
+                        "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\signals.py"
+                    ]
+                }
+            },
+            {
+                "id": "users.models.Profile.super",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py"
+                }
+            },
+            {
+                "id": "users.models.Profile.Image.open",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py"
+                }
+            },
+            {
+                "id": "img.thumbnail",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py"
+                }
+            },
+            {
+                "id": "img.save",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py"
+                }
+            },
+            {
+                "id": "users.signals",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\signals.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "users.signals.create_profile",
+                "type": "function",
+                "metadata": {
+                    "args": [
+                        "sender",
+                        "instance",
+                        "created"
+                    ],
+                    "lineno": 17,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\signals.py",
+                    "category": "function_definition"
+                }
+            },
+            {
+                "id": "<ComplexCall>.create",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\signals.py"
+                }
+            },
+            {
+                "id": "users.signals.save_profile",
+                "type": "function",
+                "metadata": {
+                    "args": [
+                        "sender",
+                        "instance"
+                    ],
+                    "lineno": 25,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\signals.py",
+                    "category": "function_definition"
+                }
+            },
+            {
+                "id": "users.tests",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\tests.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "users.urls",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\urls.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "users.views",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "users.views.register",
+                "type": "function",
+                "metadata": {
+                    "args": [
+                        "request"
+                    ],
+                    "lineno": 10,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py",
+                    "category": "function_definition"
+                }
+            },
+            {
+                "id": "users.views.UserRegisterForm",
+                "type": "class",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "id": "form.is_valid",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "id": "form.save",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "id": "messages.success",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "id": "django.redirect",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "id": "users.views.profile",
+                "type": "function",
+                "metadata": {
+                    "args": [
+                        "request"
+                    ],
+                    "lineno": 37,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py",
+                    "category": "function_definition"
+                }
+            },
+            {
+                "id": "users.views.UserUpdateForm",
+                "type": "class",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "id": "users.views.ProfileUpdateForm",
+                "type": "class",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "id": "u_form.is_valid",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "id": "p_form.is_valid",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "id": "u_form.save",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "id": "p_form.save",
+                "type": "function",
+                "metadata": {
+                    "category": "fallback_node",
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "id": "users.__init__",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\__init__.py",
+                    "category": "package_init"
+                }
+            },
+            {
+                "id": "users.migrations.0001_initial",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\migrations\\0001_initial.py",
+                    "category": "module"
+                }
+            },
+            {
+                "id": "users.migrations.0001_initial.Migration",
+                "type": "class",
+                "metadata": {
+                    "bases": [
+                        "migrations.Migration"
+                    ],
+                    "lineno": 8,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\migrations\\0001_initial.py",
+                    "category": "class_definition"
+                }
+            },
+            {
+                "id": "users.migrations.__init__",
+                "type": "module",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\migrations\\__init__.py",
+                    "category": "package_init"
+                }
+            }
+        ],
+        "links": [
+            {
+                "source": "manage.main",
+                "target": "<ComplexCall>.setdefault",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 8,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\manage.py"
+                }
+            },
+            {
+                "source": "manage.main",
+                "target": "manage.ImportError",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 12,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\manage.py"
+                }
+            },
+            {
+                "source": "manage.main",
+                "target": "manage.execute_from_command_line",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 17,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\manage.py"
+                }
+            },
+            {
+                "source": "manage",
+                "target": "<unknown_module>.main",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 21,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\manage.py"
+                }
+            },
+            {
+                "source": "blog.admin",
+                "target": "<ComplexCall>.register",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 5,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\admin.py"
+                }
+            },
+            {
+                "source": "blog.apps.BlogConfig",
+                "target": "AppConfig",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\apps.py"
+                }
+            },
+            {
+                "source": "blog.models.Post",
+                "target": "models.Model",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\models.py"
+                }
+            },
+            {
+                "source": "blog.models.Post",
+                "target": "django.db.models.CharField",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 9,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\models.py"
+                }
+            },
+            {
+                "source": "blog.models.Post",
+                "target": "django.db.models.TextField",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 10,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\models.py"
+                }
+            },
+            {
+                "source": "blog.models.Post",
+                "target": "django.db.models.DateTimeField",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 11,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\models.py"
+                }
+            },
+            {
+                "source": "Post",
+                "target": "User",
+                "type": "MODEL_ACCESS",
+                "metadata": {
+                    "relationship_type": "ForeignKey"
+                }
+            },
+            {
+                "source": "blog.models.Post",
+                "target": "django.db.models.ForeignKey",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 15,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\models.py"
+                }
+            },
+            {
+                "source": "blog.models.Post.get_absolute_url",
+                "target": "django.reverse",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 33,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\models.py"
+                }
+            },
+            {
+                "source": "blog.urls",
+                "target": "django.path",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 9,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\urls.py"
+                }
+            },
+            {
+                "source": "blog.urls",
+                "target": "<UnknownClass>.as_view",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 9,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\urls.py"
+                }
+            },
+            {
+                "source": "blog.views.home",
+                "target": "<ComplexCall>.all",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 13,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.home",
+                "target": "django.render",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 15,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.PostListView",
+                "target": "ListView",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.UserPostListView",
+                "target": "ListView",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.UserPostListView.get_queryset",
+                "target": "django.get_object_or_404",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 55,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.UserPostListView.get_queryset",
+                "target": "<ComplexCall>.get",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 55,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.UserPostListView.get_queryset",
+                "target": "<ComplexCall>.order_by",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 56,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.UserPostListView.get_queryset",
+                "target": "<ComplexCall>.filter",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 56,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.PostDetailView",
+                "target": "DetailView",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.PostCreateView",
+                "target": "LoginRequiredMixin",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.PostCreateView",
+                "target": "CreateView",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.PostCreateView.form_valid",
+                "target": "<ComplexCall>.form_valid",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 75,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.PostCreateView.form_valid",
+                "target": "blog.views.PostCreateView.super",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 75,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.PostUpdateView",
+                "target": "LoginRequiredMixin",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.PostUpdateView",
+                "target": "UserPassesTestMixin",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.PostUpdateView",
+                "target": "UpdateView",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.PostUpdateView.form_valid",
+                "target": "<ComplexCall>.form_valid",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 84,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.PostUpdateView.form_valid",
+                "target": "blog.views.PostUpdateView.super",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 84,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.PostUpdateView.test_func",
+                "target": "PostUpdateView.get_object",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 89,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.PostDeleteView",
+                "target": "LoginRequiredMixin",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.PostDeleteView",
+                "target": "UserPassesTestMixin",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.PostDeleteView",
+                "target": "DeleteView",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.PostDeleteView.test_func",
+                "target": "PostDeleteView.get_object",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 108,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.views.about",
+                "target": "django.render",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 119,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\views.py"
+                }
+            },
+            {
+                "source": "blog.migrations.0001_initial.Migration",
+                "target": "migrations.Migration",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\0001_initial.py"
+                }
+            },
+            {
+                "source": "blog.migrations.0001_initial.Migration",
+                "target": "<UnknownClass>.swappable_dependency",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 14,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\0001_initial.py"
+                }
+            },
+            {
+                "source": "blog.migrations.0001_initial.Migration",
+                "target": "<UnknownClass>.CreateModel",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 18,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\0001_initial.py"
+                }
+            },
+            {
+                "source": "blog.migrations.0001_initial.Migration",
+                "target": "models.AutoField",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 21,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\0001_initial.py"
+                }
+            },
+            {
+                "source": "blog.migrations.0001_initial.Migration",
+                "target": "django.db.models.CharField",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 22,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\0001_initial.py"
+                }
+            },
+            {
+                "source": "blog.migrations.0001_initial.Migration",
+                "target": "django.db.models.TextField",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 23,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\0001_initial.py"
+                }
+            },
+            {
+                "source": "blog.migrations.0001_initial.Migration",
+                "target": "django.db.models.DateTimeField",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 24,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\0001_initial.py"
+                }
+            },
+            {
+                "source": "Migration",
+                "target": "unknown",
+                "type": "MODEL_ACCESS",
+                "metadata": {
+                    "relationship_type": "ForeignKey"
+                }
+            },
+            {
+                "source": "blog.migrations.0001_initial.Migration",
+                "target": "django.db.models.ForeignKey",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 25,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\blog\\migrations\\0001_initial.py"
+                }
+            },
+            {
+                "source": "djangoproject.asgi",
+                "target": "<ComplexCall>.setdefault",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 14,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\asgi.py"
+                }
+            },
+            {
+                "source": "djangoproject.asgi",
+                "target": "<unknown_module>.get_asgi_application",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 16,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\asgi.py"
+                }
+            },
+            {
+                "source": "djangoproject.settings",
+                "target": "<ComplexCall>.dirname",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 16,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\settings.py"
+                }
+            },
+            {
+                "source": "djangoproject.settings",
+                "target": "<ComplexCall>.abspath",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 16,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\settings.py"
+                }
+            },
+            {
+                "source": "djangoproject.settings",
+                "target": "<ComplexCall>.get",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 23,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\settings.py"
+                }
+            },
+            {
+                "source": "djangoproject.settings",
+                "target": "<ComplexCall>.join",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 81,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\settings.py"
+                }
+            },
+            {
+                "source": "djangoproject.urls",
+                "target": "django.path",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 27,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\urls.py"
+                }
+            },
+            {
+                "source": "djangoproject.urls",
+                "target": "django.include",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 28,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\urls.py"
+                }
+            },
+            {
+                "source": "djangoproject.urls",
+                "target": "<ComplexCall>.as_view",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 34,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\urls.py"
+                }
+            },
+            {
+                "source": "djangoproject.urls",
+                "target": "django.static",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 48,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\urls.py"
+                }
+            },
+            {
+                "source": "djangoproject.wsgi",
+                "target": "<ComplexCall>.setdefault",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 14,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\wsgi.py"
+                }
+            },
+            {
+                "source": "djangoproject.wsgi",
+                "target": "<unknown_module>.get_wsgi_application",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 16,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\djangoproject\\wsgi.py"
+                }
+            },
+            {
+                "source": "users.admin",
+                "target": "<ComplexCall>.register",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 4,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\admin.py"
+                }
+            },
+            {
+                "source": "users.apps.UsersConfig",
+                "target": "AppConfig",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\apps.py"
+                }
+            },
+            {
+                "source": "users.forms.UserRegisterForm",
+                "target": "UserCreationForm",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\forms.py"
+                }
+            },
+            {
+                "source": "users.forms.UserRegisterForm",
+                "target": "django.forms.EmailField",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 8,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\forms.py"
+                }
+            },
+            {
+                "source": "users.forms.UserUpdateForm",
+                "target": "forms.ModelForm",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\forms.py"
+                }
+            },
+            {
+                "source": "users.forms.UserUpdateForm",
+                "target": "django.forms.EmailField",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 23,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\forms.py"
+                }
+            },
+            {
+                "source": "users.forms.ProfileUpdateForm",
+                "target": "forms.ModelForm",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\forms.py"
+                }
+            },
+            {
+                "source": "users.models.Profile",
+                "target": "models.Model",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py"
+                }
+            },
+            {
+                "source": "Profile",
+                "target": "User",
+                "type": "MODEL_ACCESS",
+                "metadata": {
+                    "relationship_type": "OneToOneField"
+                }
+            },
+            {
+                "source": "users.models.Profile",
+                "target": "django.db.models.OneToOneField",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 6,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py"
+                }
+            },
+            {
+                "source": "users.models.Profile",
+                "target": "django.db.models.ImageField",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 12,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py"
+                }
+            },
+            {
+                "source": "users.models.Profile.save",
+                "target": "<ComplexCall>.save",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 23,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py"
+                }
+            },
+            {
+                "source": "users.models.Profile.save",
+                "target": "users.models.Profile.super",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 23,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py"
+                }
+            },
+            {
+                "source": "users.models.Profile.save",
+                "target": "users.models.Profile.Image.open",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 28,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py"
+                }
+            },
+            {
+                "source": "users.models.Profile.save",
+                "target": "img.thumbnail",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 34,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py"
+                }
+            },
+            {
+                "source": "users.models.Profile.save",
+                "target": "img.save",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 35,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\models.py"
+                }
+            },
+            {
+                "source": "users.signals.create_profile",
+                "target": "<ComplexCall>.create",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 19,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\signals.py"
+                }
+            },
+            {
+                "source": "users.signals.save_profile",
+                "target": "<ComplexCall>.save",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 26,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\signals.py"
+                }
+            },
+            {
+                "source": "users.views.register",
+                "target": "users.views.UserRegisterForm",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 12,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "source": "users.views.register",
+                "target": "form.is_valid",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 14,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "source": "users.views.register",
+                "target": "form.save",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 15,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "source": "users.views.register",
+                "target": "<ComplexCall>.get",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 17,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "source": "users.views.register",
+                "target": "messages.success",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 20,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "source": "users.views.register",
+                "target": "django.redirect",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 21,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "source": "users.views.register",
+                "target": "django.render",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 26,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "source": "users.views.profile",
+                "target": "users.views.UserUpdateForm",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 42,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "source": "users.views.profile",
+                "target": "users.views.ProfileUpdateForm",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 43,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "source": "users.views.profile",
+                "target": "u_form.is_valid",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 46,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "source": "users.views.profile",
+                "target": "p_form.is_valid",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 46,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "source": "users.views.profile",
+                "target": "u_form.save",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 47,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "source": "users.views.profile",
+                "target": "p_form.save",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 48,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "source": "users.views.profile",
+                "target": "messages.success",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 51,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "source": "users.views.profile",
+                "target": "django.redirect",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 54,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "source": "users.views.profile",
+                "target": "django.render",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 68,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\views.py"
+                }
+            },
+            {
+                "source": "users.migrations.0001_initial.Migration",
+                "target": "migrations.Migration",
+                "type": "INHERITANCE",
+                "metadata": {
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\migrations\\0001_initial.py"
+                }
+            },
+            {
+                "source": "users.migrations.0001_initial.Migration",
+                "target": "<UnknownClass>.swappable_dependency",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 13,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\migrations\\0001_initial.py"
+                }
+            },
+            {
+                "source": "users.migrations.0001_initial.Migration",
+                "target": "<UnknownClass>.CreateModel",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 17,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\migrations\\0001_initial.py"
+                }
+            },
+            {
+                "source": "users.migrations.0001_initial.Migration",
+                "target": "models.AutoField",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 20,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\migrations\\0001_initial.py"
+                }
+            },
+            {
+                "source": "users.migrations.0001_initial.Migration",
+                "target": "django.db.models.ImageField",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 21,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\migrations\\0001_initial.py"
+                }
+            },
+            {
+                "source": "users.migrations.0001_initial.Migration",
+                "target": "django.db.models.OneToOneField",
+                "type": "FUNCTION_CALL",
+                "metadata": {
+                    "resolution": "context_sensitive",
+                    "lineno": 22,
+                    "file_path": "C:\\Users\\saran\\AppData\\Local\\Temp\\graphix_Connect_5b1ec5f6\\users\\migrations\\0001_initial.py"
+                }
+            }
+        ],
+        "metadata": {
+            "research_grade_analysis_completed": true,
+            "files_analyzed": 26,
+            "total_files_found": 26,
+            "analysis_time_seconds": 4.33,
+            "timeout_seconds": 600,
+            "framework_analyzed_as": "django",
+            "context_sensitivity_k": 2,
+            "status": "completed",
+            "research_grade_requested": true,
+            "requested_context_sensitivity_k": 2,
+            "endpoint_runtime_seconds": 0.0,
+            "status_log_from_backend": [
+                "Received request for https://github.com/deliciafernandes/Connect",
+                "Initializing research-grade analysis with hint: django",
+                "Using research-grade generator (actual context sensitivity determined by builder)",
+                "Starting repository analysis..."
+            ]
+        }
+    },
+    "metrics": {
+        "node_count": 132,
+        "edge_count": 100
+    },
+    "status_log": [
+        "Received request for https://github.com/deliciafernandes/Connect",
+        "Initializing research-grade analysis with hint: django",
+        "Using research-grade generator (actual context sensitivity determined by builder)",
+        "Starting repository analysis..."
+    ],
+    "documentation_id": "8b32464c-e04c-4bef-a720-eed7d3739288"
+}
