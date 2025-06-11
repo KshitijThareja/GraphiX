@@ -9,7 +9,6 @@ from pathlib import Path
 
 env_path = Path(__file__).parent.parent.parent / ".env"
 
-
 class Settings(BaseSettings):
     DATABASE_URL: str = Field(
         default="sqlite:///./graphix.db",

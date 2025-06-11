@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
     ];
   },
   env: {
-    NEXT_PUBLIC_GITHUB_CLIENT_ID: "Iv23liN2E0yjs3lU3fr2",
+    NEXT_PUBLIC_GITHUB_CLIENT_ID: "Iv23liUpW8R79TphqMWl",
     NEXT_PUBLIC_API_URL: "http://localhost:8000", // Corrected: base URL for backend
   },
 };
