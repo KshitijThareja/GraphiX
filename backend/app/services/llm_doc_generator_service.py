@@ -169,7 +169,15 @@ class LLMDocGeneratorService:
         self.cache = ResponseCache(max_size=200)  # Cache up to 200 responses
         self.rate_limiter = RateLimiter(max_retries=3, base_delay=2.0, jitter=0.5)
         self.batch_processor = BatchProcessor(batch_size=5, delay_between_batches=2.0)
-        self.ast_generator = ASTGenerator()
+        
+        # Initialize AST generator
+        try:
+            from ..utils.ast_generator import ASTGenerator
+            self.ast_generator = ASTGenerator()
+            logger.info("AST Generator initialized successfully in LLMDocGeneratorService")
+        except Exception as e:
+            logger.error(f"Failed to initialize AST Generator: {e}")
+            self.ast_generator = None
         
         # Load configuration options
         self.config = {
@@ -320,6 +328,14 @@ class LLMDocGeneratorService:
                         # Log the attempt to store documentation
                         logger.info(f"LLMDocGeneratorService: Attempting to store documentation in MongoDB for node: {node_id}, repository: {repository_id}")
                         
+                        # Make a copy of parsed_docs to avoid modifying the cached version
+                        mongo_docs = dict(parsed_docs)
+                        
+                        # Limit docstring size to 10000 characters to prevent MongoDB document size limit errors
+                        if 'docstring' in mongo_docs and len(mongo_docs['docstring']) > 10000:
+                            mongo_docs['docstring'] = mongo_docs['docstring'][:9997] + "..."
+                            logger.warning(f"LLMDocGeneratorService: Truncated docstring for node {node_id} to 10000 characters")
+                        
                         result = await self.db['node_documentation'].update_one(
                             {
                                 'node_id': node_id,
@@ -329,7 +345,7 @@ class LLMDocGeneratorService:
                                 '$set': {
                                     'node_id': node_id,
                                     'repository_id': repository_id,
-                                    'documentation': parsed_docs,
+                                    'documentation': mongo_docs,
                                     'generated_at': datetime.now()
                                 }
                             },
@@ -344,7 +360,11 @@ class LLMDocGeneratorService:
                         else:
                             logger.warning(f"LLMDocGeneratorService: MongoDB update_one operation did not match or insert any documents for node: {node_id}")
                     except Exception as e:
-                        logger.error(f"LLMDocGeneratorService: Error storing documentation in MongoDB: {e}", exc_info=True)
+                        # Check specifically for document size limit errors
+                        if "document too large" in str(e).lower() or "bson size" in str(e).lower():
+                            logger.error(f"LLMDocGeneratorService: MongoDB document size limit exceeded for node {node_id}. Try reducing the context_lines parameter or further limiting docstring size.")
+                        else:
+                            logger.error(f"LLMDocGeneratorService: Error storing documentation in MongoDB: {e}", exc_info=True)
                         # Continue without MongoDB storage
                 else:
                     if self.db is None:
@@ -465,11 +485,26 @@ class LLMDocGeneratorService:
         # Clone the node data to avoid modifying the original
         enriched_data = {**node_data}
         
+        # First check if source code is already available in the node metadata
+        source_code = node_data.get("metadata", {}).get("source_code")
+        
         # Check if we have a file path and it's accessible
         file_path = node_data.get('file', '')
         if not file_path or not os.path.isfile(file_path):
             logger.debug(f"AST enrichment skipped: File not accessible for node {node_data.get('id')}")
-            return enriched_data
+            # If we have source code in metadata, we can still try to parse it even without a valid file path
+            if not source_code:
+                return enriched_data
+            logger.info(f"Using source code from metadata for node {node_data.get('id')} since file is not accessible")
+        else:
+            # Read the source file content if we don't already have it
+            if not source_code:
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        source_code = f.read()
+                except Exception as e:
+                    logger.warning(f"Failed to read source file {file_path} for node {node_data.get('id')}: {e}")
+                    return enriched_data
         
         # Get node identifier and type
         node_id = node_data.get('id', '')
@@ -480,98 +515,81 @@ class LLMDocGeneratorService:
             return enriched_data
         
         try:
-            # Read the source file content
-            with open(file_path, 'r', encoding='utf-8') as f:
-                source_code = f.read()
-
-            # Parse the file content using ASTGenerator
-            # Determine language for ASTGenerator (assuming python for now based on context)
-            # TODO: Enhance language detection if other file types are processed.
-            language_for_ast = 'python' 
-            source_code_bytes = source_code.encode('utf-8')
-            tree_sitter_ast = self.ast_generator.parse_file_content(source_code_bytes, language=language_for_ast)
-
-            if not tree_sitter_ast:
-                logger.warning(f"AST enrichment skipped: Failed to parse file {file_path} with ASTGenerator for node {node_data.get('id')}")
-                return enriched_data
-            
-            logger.info(f"Successfully parsed file {file_path} with ASTGenerator for node {node_data.get('id')}")
-
-            # Use ASTGenerator to find the specific node and get its source code
-            # The 'node_id' from callgraph might be like 'file.py.ClassName.method_name' or 'file.py.function_name'
-            # We need to adapt this for find_node_and_get_source which expects 'ClassName.methodName' or 'function_name'
-            
-            # Determine the identifier and type for ASTGenerator based on callgraph node_id and node_type
-            cg_node_id = node_data.get('id', '') # e.g., services.callgraph.CallgraphGenerator.analyze_repository
-            cg_node_type = node_data.get('type', '').lower() # e.g., 'method', 'function', 'class'
-            
-            # Prepare identifier for find_node_and_get_source
-            # It expects 'function_name', 'ClassName', or 'ClassName.method_name'
-            # The callgraph 'id' is often fully qualified, e.g., module.submodule.Class.method
-            # We need the simple name or Class.method part.
-            id_parts = cg_node_id.split('.')
-            ast_node_identifier = ''
-            
-            if cg_node_type == 'method' and len(id_parts) >= 2:
-                # Assuming the last two parts are ClassName.methodName
-                ast_node_identifier = f"{id_parts[-2]}.{id_parts[-1]}"
-            elif (cg_node_type == 'function' or cg_node_type == 'class') and len(id_parts) >= 1:
-                # Assuming the last part is the function/class name
-                ast_node_identifier = id_parts[-1]
+            # First try Tree-sitter extraction if file path is available
+            if file_path and os.path.isfile(file_path):
+                logger.info(f"Attempting Tree-sitter extraction for node {node_id} in file {file_path}")
+                
+                # Check if ast_generator is available
+                if not hasattr(self, 'ast_generator'):
+                    logger.warning(f"Tree-sitter extraction skipped: ast_generator not available in LLMDocGeneratorService")
+                else:
+                    try:
+                        # Extract the node name from the ID (last part)
+                        name_parts = node_id.split('.')
+                        node_name = name_parts[-1]
+                        
+                        # For methods, we need class.method format
+                        if node_type == 'method' and len(name_parts) >= 2:
+                            node_identifier = f"{name_parts[-2]}.{name_parts[-1]}"
+                            logger.debug(f"Using class.method format for Tree-sitter: {node_identifier}")
+                        else:
+                            node_identifier = node_name
+                            logger.debug(f"Using simple name for Tree-sitter: {node_identifier}")
+                        
+                        # Use Tree-sitter to extract surrounding code
+                        logger.info(f"Calling _extract_surrounding_code_with_tree_sitter for {node_identifier} ({node_type})")
+                        surrounding_code = self._extract_surrounding_code_with_tree_sitter(
+                            file_path=file_path,
+                            node_identifier=node_identifier,
+                            node_type=node_type
+                        )
+                        
+                        if surrounding_code:
+                            enriched_data['surrounding_code'] = surrounding_code
+                            logger.info(f"Successfully extracted surrounding code context for node {node_id} using Tree-sitter")
+                        else:
+                            logger.warning(f"Tree-sitter extraction returned None for {node_id}")
+                    except Exception as e:
+                        logger.error(f"Tree-sitter extraction failed for {node_id}: {e}", exc_info=True)
             else:
-                logger.warning(f"Could not determine a simple AST node identifier from callgraph ID '{cg_node_id}' and type '{cg_node_type}'. Skipping Tree-sitter source extraction.")
-
-            if ast_node_identifier and tree_sitter_ast:
+                logger.debug(f"Tree-sitter extraction skipped: File not accessible or not provided for node {node_id}")
+            
+            # If Tree-sitter extraction didn't work or wasn't attempted, try Python's ast module
+            if 'surrounding_code' not in enriched_data and source_code:
+                logger.info(f"Falling back to Python AST for node {node_id}")
+                # Parse the source code using Python's ast module
                 try:
-                    # Read file content as bytes for Tree-sitter
-                    with open(file_path, 'rb') as fb:
-                        source_code_bytes = fb.read()
+                    py_ast_tree = ast.parse(source_code, filename=file_path or "<string>")
+                    target_py_ast_node = self._find_ast_node(py_ast_tree, node_id, node_type)
 
-                    extracted_source = self.ast_generator.find_node_and_get_source(
-                        ast_root_node=tree_sitter_ast, 
-                        node_identifier=ast_node_identifier, 
-                        target_node_type=cg_node_type, # Use callgraph's node type
-                        source_code_bytes=source_code_bytes
-                    )
-                    if extracted_source:
-                        enriched_data['ast_extracted_source'] = extracted_source
-                        logger.info(f"Successfully extracted source for '{ast_node_identifier}' from {file_path} using Tree-sitter.")
+                    if not target_py_ast_node:
+                        logger.debug(f"Python AST enrichment skipped: Could not find node {node_id} in source code using 'ast' module")
                     else:
-                        logger.warning(f"Could not extract source for '{ast_node_identifier}' from {file_path} using Tree-sitter. Method returned None.")
-                except Exception as e_find_source:
-                    logger.error(f"Error calling find_node_and_get_source for '{ast_node_identifier}' in {file_path}: {e_find_source}", exc_info=True)
-            elif not tree_sitter_ast:
-                logger.warning(f"Skipping Tree-sitter source extraction for {cg_node_id} as tree_sitter_ast is None.")
-            elif not ast_node_identifier:
-                 logger.warning(f"Skipping Tree-sitter source extraction for {cg_node_id} as ast_node_identifier could not be determined.")
-            
-            # For now, we are not modifying the existing AST extraction logic which uses Python's 'ast' module.
-            # The plan is to eventually replace it or augment it with Tree-sitter.
-            # The following lines preserve the original 'ast' module based enrichment for now.
-            
-            py_ast_tree = ast.parse(source_code, filename=file_path)
-            target_py_ast_node = self._find_ast_node(py_ast_tree, node_id, node_type)
-
-            if not target_py_ast_node:
-                logger.debug(f"Python AST enrichment skipped: Could not find node {node_id} in {file_path} using 'ast' module")
-                # We still return enriched_data because Tree-sitter parsing might have been successful
-                # and we might add Tree-sitter specific data later.
-            else:
-                if node_type == 'function' or node_type == 'method':
-                    func_details = self._extract_function_details(target_py_ast_node, source_code)
-                    enriched_data.update(func_details)
-                elif node_type == 'class':
-                    class_details = self._extract_class_details(target_py_ast_node, source_code, py_ast_tree)
-                    enriched_data.update(class_details)
-                elif node_type == 'module':
-                    module_details = self._extract_module_details(py_ast_tree, source_code)
-                    enriched_data.update(module_details)
-                logger.info(f"Successfully enriched node {node_id} with Python 'ast' module data")
+                        # Extract surrounding context code
+                        surrounding_code = self._extract_surrounding_code(source_code, target_py_ast_node)
+                        if surrounding_code:
+                            enriched_data['surrounding_code'] = surrounding_code
+                            logger.info(f"Successfully extracted surrounding code context for node {node_id} using Python AST")
+                            
+                        if node_type == 'function' or node_type == 'method':
+                            func_details = self._extract_function_details(target_py_ast_node, source_code)
+                            enriched_data.update(func_details)
+                        elif node_type == 'class':
+                            class_details = self._extract_class_details(target_py_ast_node, source_code, py_ast_tree)
+                            enriched_data.update(class_details)
+                        elif node_type == 'module':
+                            module_details = self._extract_module_details(py_ast_tree, source_code)
+                            enriched_data.update(module_details)
+                        logger.info(f"Successfully enriched node {node_id} with Python 'ast' module data")
+                except SyntaxError as se:
+                    logger.warning(f"Syntax error parsing source code for {node_id}: {se}")
+                except Exception as e:
+                    logger.warning(f"Error during Python ast parsing for {node_id}: {e}")
 
             return enriched_data
             
         except Exception as e:
-            logger.warning(f"Error enriching node data with AST for {node_data.get('id')} in file {file_path}: {e}", exc_info=True)
+            logger.error(f"Error enriching node data with AST for {node_data.get('id')}: {e}", exc_info=True)
             return enriched_data
             
     def _find_ast_node(self, tree: ast.AST, node_id: str, node_type: str) -> Optional[ast.AST]:
@@ -1185,6 +1203,39 @@ class LLMDocGeneratorService:
         if 'complexity' in node_data:
             prompt.append(f"Complexity: {node_data.get('complexity')}")
         
+        # Add surrounding code context if available
+        if 'surrounding_code' in node_data and node_data['surrounding_code']:
+            surrounding_code = node_data['surrounding_code']
+            prompt.append(f"\n## SURROUNDING CODE CONTEXT\n")
+            
+            # Use a more concise format with character limits
+            code_sections = []
+            
+            if 'before' in surrounding_code and surrounding_code['before'].strip():
+                before_code = surrounding_code['before'].strip()
+                # Only show up to 20 lines of preceding code
+                before_lines = before_code.split('\n')
+                if len(before_lines) > 20:
+                    before_lines = before_lines[-20:]
+                    before_code = '\n'.join(before_lines)
+                code_sections.append(f"Code before:\n```python\n{before_code}\n```")
+            
+            if 'node_code' in surrounding_code:
+                node_code = surrounding_code['node_code']
+                code_sections.append(f"Target code:\n```python\n{node_code}\n```")
+                
+            if 'after' in surrounding_code and surrounding_code['after'].strip():
+                after_code = surrounding_code['after'].strip()
+                # Only show up to 10 lines of following code
+                after_lines = after_code.split('\n')
+                if len(after_lines) > 10:
+                    after_lines = after_lines[:10]
+                    after_code = '\n'.join(after_lines)
+                code_sections.append(f"Code after:\n```python\n{after_code}\n```")
+            
+            # Join the sections with separators
+            prompt.append('\n\n'.join(code_sections))
+        
         # Add AST-derived information if available
         ast_data_added = False
         
@@ -1338,6 +1389,231 @@ class LLMDocGeneratorService:
             prompt.append("\nNote: No detailed type information could be extracted from the AST. Please generate documentation based on the available context.")
             
         return "\n".join(prompt)
+
+    def _extract_surrounding_code(self, source_code: str, node: ast.AST, context_lines: int = 10) -> Optional[Dict[str, str]]:
+        """
+        Extract code surrounding the target node to provide more context.
+        Uses a more efficient approach to extract and limit surrounding code.
+        
+        Args:
+            source_code: The complete source code string
+            node: The AST node for which to extract surrounding context
+            context_lines: Number of lines to include before and after the node
+            
+        Returns:
+            Dictionary with 'before', 'node_code', and 'after' sections
+        """
+        try:
+            if not hasattr(node, 'lineno') or not hasattr(node, 'end_lineno'):
+                return None
+                
+            source_lines = source_code.splitlines()
+            total_lines = len(source_lines)
+            
+            # Get the node's code with bounds checking
+            node_start = max(0, node.lineno - 1)  # Convert to 0-indexed
+            node_end = min(total_lines, node.end_lineno)
+            
+            # Calculate context boundaries with proper bounds checking
+            before_start = max(0, node_start - context_lines)
+            after_end = min(total_lines, node_end + context_lines)
+            
+            # Extract the code sections
+            before_code = '\n'.join(source_lines[before_start:node_start])
+            node_code = '\n'.join(source_lines[node_start:node_end])
+            after_code = '\n'.join(source_lines[node_end:after_end])
+            
+            # Apply size limits to prevent MongoDB document size issues
+            # Use smarter truncation that preserves code structure better
+            if len(node_code) > 1000:
+                # Try to preserve complete lines up to the limit
+                lines = node_code.split('\n')
+                truncated_lines = []
+                current_length = 0
+                
+                for line in lines:
+                    if current_length + len(line) + 1 <= 997:  # +1 for newline
+                        truncated_lines.append(line)
+                        current_length += len(line) + 1
+                    else:
+                        break
+                        
+                node_code = '\n'.join(truncated_lines) + '...'
+            
+            # Apply similar smart truncation to before/after code
+            if len(before_code) > 500:
+                lines = before_code.split('\n')
+                # Take the last N lines that fit within the limit
+                truncated_lines = []
+                current_length = 0
+                
+                for line in reversed(lines):
+                    if current_length + len(line) + 1 <= 497:  # +1 for newline
+                        truncated_lines.insert(0, line)  # Insert at beginning to maintain order
+                        current_length += len(line) + 1
+                    else:
+                        break
+                        
+                before_code = '...\n' + '\n'.join(truncated_lines)
+            
+            if len(after_code) > 500:
+                lines = after_code.split('\n')
+                truncated_lines = []
+                current_length = 0
+                
+                for line in lines:
+                    if current_length + len(line) + 1 <= 497:  # +1 for newline
+                        truncated_lines.append(line)
+                        current_length += len(line) + 1
+                    else:
+                        break
+                        
+                after_code = '\n'.join(truncated_lines) + '\n...'
+            
+            # Return the structured code context without the full_context field
+            return {
+                'before': before_code,
+                'node_code': node_code,
+                'after': after_code
+            }
+            
+        except Exception as e:
+            logger.warning(f"Error extracting surrounding code: {e}")
+            return None
+
+    def _extract_surrounding_code_with_tree_sitter(self, file_path: str, node_identifier: str, node_type: str, context_lines: int = 10) -> Optional[Dict[str, str]]:
+        """
+        Extract code surrounding a target node using Tree-sitter.
+        This can be more robust than AST for certain languages and scenarios.
+        
+        Args:
+            file_path: Path to the source file
+            node_identifier: Identifier of the node (e.g., function/class name)
+            node_type: Type of node ('function', 'method', 'class', etc.)
+            context_lines: Number of lines to include before and after the node
+            
+        Returns:
+            Dictionary with 'before', 'node_code', and 'after' sections
+        """
+        logger.info(f"Tree-sitter extraction attempt for {node_identifier} ({node_type}) in {file_path}")
+        try:
+            if not os.path.isfile(file_path):
+                logger.warning(f"Tree-sitter code extraction: File not accessible: {file_path}")
+                return None
+                
+            # Read the file content
+            with open(file_path, 'rb') as f:
+                source_code_bytes = f.read()
+                
+            # Determine language for ASTGenerator
+            language = 'python'  # Default to Python, could be extended for other languages
+            if file_path.endswith(('.js', '.jsx', '.ts', '.tsx')):
+                language = 'javascript'
+                
+            # Check if ast_generator is available
+            if not hasattr(self, 'ast_generator'):
+                logger.error(f"Tree-sitter extraction failed: ast_generator attribute not found in LLMDocGeneratorService")
+                return None
+                
+            # Parse with Tree-sitter
+            logger.debug(f"Calling ast_generator.parse_file_content for {file_path} with language {language}")
+            tree_sitter_ast = self.ast_generator.parse_file_content(source_code_bytes, language=language)
+            if not tree_sitter_ast:
+                logger.warning(f"Tree-sitter code extraction: Failed to parse source code for {file_path}")
+                return None
+                
+            # Find the target node
+            logger.debug(f"Calling ast_generator.find_node_and_get_source for {node_identifier} ({node_type})")
+            node_info = self.ast_generator.find_node_and_get_source(
+                ast_root_node=tree_sitter_ast,
+                node_identifier=node_identifier,
+                target_node_type=node_type,
+                source_code_bytes=source_code_bytes
+            )
+            
+            if not node_info:
+                logger.warning(f"Tree-sitter code extraction: Could not find node '{node_identifier}' in {file_path}")
+                return None
+                
+            logger.info(f"Tree-sitter successfully found node '{node_identifier}' in {file_path}")
+            
+            # Convert bytes to string
+            source_code = source_code_bytes.decode('utf-8', errors='ignore')
+            source_lines = source_code.split('\n')
+            total_lines = len(source_lines)
+            
+            # Get node position from node_info
+            node_start_line = node_info.get('start_line', 0)
+            node_end_line = node_info.get('end_line', 0)
+            
+            logger.debug(f"Tree-sitter node position: start_line={node_start_line}, end_line={node_end_line}")
+            
+            if node_start_line == 0 and node_end_line == 0:
+                logger.warning(f"Tree-sitter code extraction: Invalid line numbers for {node_identifier}")
+                return None
+                
+            # Calculate context boundaries with proper bounds checking
+            before_start = max(0, node_start_line - context_lines)
+            after_end = min(total_lines, node_end_line + context_lines)
+            
+            # Extract the code sections
+            before_code = '\n'.join(source_lines[before_start:node_start_line])
+            node_code = '\n'.join(source_lines[node_start_line:node_end_line+1])  # +1 because end_line is inclusive
+            after_code = '\n'.join(source_lines[node_end_line+1:after_end])
+            
+            # Apply size limits with smart truncation (same as in _extract_surrounding_code)
+            if len(node_code) > 1000:
+                lines = node_code.split('\n')
+                truncated_lines = []
+                current_length = 0
+                
+                for line in lines:
+                    if current_length + len(line) + 1 <= 997:
+                        truncated_lines.append(line)
+                        current_length += len(line) + 1
+                    else:
+                        break
+                        
+                node_code = '\n'.join(truncated_lines) + '...'
+            
+            if len(before_code) > 500:
+                lines = before_code.split('\n')
+                truncated_lines = []
+                current_length = 0
+                
+                for line in reversed(lines):
+                    if current_length + len(line) + 1 <= 497:
+                        truncated_lines.insert(0, line)
+                        current_length += len(line) + 1
+                    else:
+                        break
+                        
+                before_code = '...\n' + '\n'.join(truncated_lines)
+            
+            if len(after_code) > 500:
+                lines = after_code.split('\n')
+                truncated_lines = []
+                current_length = 0
+                
+                for line in lines:
+                    if current_length + len(line) + 1 <= 497:
+                        truncated_lines.append(line)
+                        current_length += len(line) + 1
+                    else:
+                        break
+                        
+                after_code = '\n'.join(truncated_lines) + '\n...'
+            
+            logger.info(f"Tree-sitter extraction successful for {node_identifier} ({node_type}) in {file_path}")
+            return {
+                'before': before_code,
+                'node_code': node_code,
+                'after': after_code
+            }
+            
+        except Exception as e:
+            logger.error(f"Error extracting surrounding code with Tree-sitter: {e}", exc_info=True)
+            return None
 
 # Example usage (for testing purposes, if run directly)
 if __name__ == '__main__':

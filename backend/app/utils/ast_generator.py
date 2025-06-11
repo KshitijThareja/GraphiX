@@ -144,10 +144,10 @@ class ASTGenerator:
         node_identifier: str,
         target_node_type: str,
         source_code_bytes: bytes
-    ) -> Optional[str]:
+    ) -> Optional[Dict[str, Any]]:
         """
         Finds a specific node (function, class, or method) in the Tree-sitter AST 
-        and returns its source code.
+        and returns its source code and position information.
 
         Args:
             ast_root_node: The root node of the Tree-sitter AST for the file.
@@ -158,7 +158,8 @@ class ASTGenerator:
             source_code_bytes: The byte content of the source file.
 
         Returns:
-            The source code of the found node as a string, or None if not found.
+            A dictionary with 'source', 'start_line', 'end_line', 'start_byte', and 'end_byte',
+            or None if the node is not found.
         """
         if not self.python_parser:
             logger.error("Python parser not available (Tree-sitter). Cannot find node.")
@@ -243,9 +244,22 @@ class ASTGenerator:
             return None
 
         if found_node:
-            start = found_node.start_byte
-            end = found_node.end_byte
-            return source_code_bytes[start:end].decode('utf-8', errors='ignore')
+            start_byte = found_node.start_byte
+            end_byte = found_node.end_byte
+            source_code = source_code_bytes[start_byte:end_byte].decode('utf-8', errors='ignore')
+            
+            # Calculate line numbers from byte positions
+            source_up_to_node = source_code_bytes[:start_byte].decode('utf-8', errors='ignore')
+            start_line = source_up_to_node.count('\n')
+            
+            # Tree-sitter line numbers are 0-indexed, but we want 1-indexed for consistency
+            return {
+                'source': source_code,
+                'start_line': start_line,
+                'end_line': start_line + source_code.count('\n'),
+                'start_byte': start_byte,
+                'end_byte': end_byte
+            }
         else:
             logger.debug(f"Node '{node_identifier}' of type '{target_node_type}' not found in AST.")
             return None
