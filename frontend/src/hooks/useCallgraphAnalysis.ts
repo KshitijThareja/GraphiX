@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useToast } from "@/components/ui/use-toast";
 interface BackendDataContent {
   nodes: any[];
   links: any[];
@@ -28,6 +29,7 @@ interface AnalysisDisplayResult {
   metrics?: BackendResponse["metrics"];
 }
 export const useCallgraphAnalysis = () => {
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<string>("Ready");
   const [result, setResult] = useState<AnalysisDisplayResult | null>(null);
@@ -47,9 +49,11 @@ export const useCallgraphAnalysis = () => {
       setError(null);
       setResult(null);
       setStatusLog(["Initializing analysis..."]);
-      const token = localStorage.getItem("authToken");
+      const token = localStorage.getItem("token");
       if (!token) {
-        setError("Authentication token not found. Please log in.");
+        const errorMsg = "Authentication token not found. Please log in.";
+        setError(errorMsg);
+        toast({ title: "Authentication Error", description: errorMsg, variant: "destructive" });
         setIsLoading(false);
         setStatus("Error");
         return;
@@ -94,6 +98,7 @@ export const useCallgraphAnalysis = () => {
             "You can check back later by refreshing the page."
           ]);
           // We don't want to show an error, but we do want to let the user know it's not done yet
+          toast({ title: "Analysis In Progress", description: "The analysis is taking longer than expected and is still running on the backend. You can check back later by refreshing the page.", variant: "default" });
           setIsLoading(false);
           return;
         }
@@ -104,6 +109,7 @@ export const useCallgraphAnalysis = () => {
             `Analysis failed with status: ${response.status}`;
           console.error("Analysis error:", responseData);
           setError(errorMessage);
+          toast({ title: "Analysis Error", description: errorMessage, variant: "destructive" });
           setStatus("Error");
           setIsLoading(false);
           return;
@@ -118,10 +124,13 @@ export const useCallgraphAnalysis = () => {
             metrics: responseData.metrics,
           });
           setStatus("Analysis complete");
+          toast({ title: "Analysis Complete", description: "Callgraph analysis finished successfully.", variant: "success" });
           if (responseData.data.metadata?.warning) {
+            const warningMsg = responseData.data.metadata.warning;
             setStatus(
-              `Analysis complete with warning: ${responseData.data.metadata.warning}`,
+              `Analysis complete with warning: ${warningMsg}`,
             );
+            toast({ title: "Analysis Warning", description: warningMsg, variant: "default" });
           }
         } else if (responseData.data?.metadata?.status === "processing") {
           // Another way the backend might indicate processing status
@@ -131,11 +140,14 @@ export const useCallgraphAnalysis = () => {
             "The analysis is running on the backend and taking longer than expected.",
             "Please check back in a few minutes by refreshing the page."
           ]);
+          toast({ title: "Analysis In Progress", description: "The analysis is running on the backend and taking longer than expected. Please check back by refreshing.", variant: "default" });
           setIsLoading(false);
         } else {
           // Unexpected response format
+          const errMsg = "Received unexpected response structure from server.";
           console.warn("Unexpected response structure:", responseData);
-          setError("Received unexpected response structure from server.");
+          setError(errMsg);
+          toast({ title: "Server Error", description: errMsg, variant: "destructive" });
           setStatus("Error");
         }
       } catch (err) {
@@ -145,6 +157,7 @@ export const useCallgraphAnalysis = () => {
             ? err.message
             : "An unknown error occurred during analysis setup.";
         setError(message);
+        toast({ title: "Request Error", description: message, variant: "destructive" });
         setStatusLog((prev) => [...prev, `Error: ${message}`]);
         setStatus("Error");
       } finally {

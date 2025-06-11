@@ -1,0 +1,103 @@
+import os
+import logging
+from typing import Dict, Any, Optional
+from tree_sitter import Parser, Language
+
+# Use tree_sitter_languages to load grammars
+from tree_sitter_languages import get_language
+# import tree_sitter_python as tspython # No longer needed
+# import tree_sitter_javascript as tsjavascript # No longer needed
+
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+class ASTGenerator:    
+
+    _instance = None
+    _initialized = False
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(ASTGenerator, cls).__new__(cls)
+        return cls._instance
+    
+    def __init__(self):
+        if self._initialized:
+            return
+        
+        self.python_parser = None
+        self.python_language = None
+        self.javascript_parser = None
+        self.javascript_language = None
+
+        # Initialize Python parser using tree_sitter_languages
+        try:
+            self.python_language = get_language('python')
+            self.python_parser = Parser()
+            self.python_parser.set_language(self.python_language)
+            logging.info("Python parser initialized successfully via tree-sitter-languages.")
+        except Exception as e:
+            logging.error(f"Failed to initialize Python parser via tree-sitter-languages: {e}", exc_info=True)
+            self.python_parser = None
+            self.python_language = None
+            raise RuntimeError(f"Failed to initialize Python parser: {e}") from e 
+            
+        # Initialize JavaScript parser using tree_sitter_languages
+        try:
+            self.javascript_language = get_language('javascript')
+            self.javascript_parser = Parser()
+            self.javascript_parser.set_language(self.javascript_language)
+            logging.info("JavaScript parser initialized successfully via tree-sitter-languages.")
+        except Exception as e:
+            logging.error(f"Failed to initialize JavaScript parser via tree-sitter-languages: {e}", exc_info=True)
+            self.javascript_parser = None
+            self.javascript_language = None
+            # JS might be optional, allow failure
+
+        self._initialized = True
+        if self.python_parser:
+             logging.info("ASTGenerator initialized successfully (Python enabled).")
+        else:
+             logging.warning("ASTGenerator initialized WITHOUT Python support.")
+
+
+    def parse_file(self, file_path: str) -> Optional[Dict[str, Any]]:
+        """Parse a Python or JavaScript file and return its AST."""
+        if not os.path.exists(file_path):
+            logging.warning(f"File not found: {file_path}")
+            return None
+        try:
+            with open(file_path, 'rb') as f:
+                content = f.read()
+        except Exception as e:
+            logging.error(f"Error reading file {file_path}: {e}")
+            return None
+        file_ext = os.path.splitext(file_path)[1].lower()
+        parser = None
+        language_name = None
+        if file_ext == '.py':
+            parser = self.python_parser
+            language_name = 'python'
+        elif file_ext in ['.js', '.jsx']:
+            parser = self.javascript_parser
+            language_name = 'javascript'
+        else:
+            logging.warning(f"Unsupported file type: {file_ext} for file {file_path}")
+            return None
+             
+        
+        try:
+            if not parser:
+                logging.error(f"{language_name.capitalize()} parser not initialized.")
+                return None
+                
+            tree = parser.parse(content)
+            return {
+                'path': file_path,
+                'language': language_name,
+                'ast': tree,
+                'content': content
+            }
+        except Exception as e:
+            logging.error(f"Error parsing file {file_path} with {language_name} parser: {e}")
+            return None 

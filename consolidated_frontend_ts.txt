@@ -1,0 +1,1484 @@
+// File: c:\GraphiX\frontend\src\app\api\analysis\callgraph\route.ts
+import { NextRequest, NextResponse } from "next/server";
+import fs from "fs/promises";
+import path from "path";
+export const dynamic = "force-dynamic";
+export async function POST(request: NextRequest) {
+  let repo_url_from_body = "";
+  try {
+    const requestBody = await request.json();
+    const { repo_url, research_grade, framework_hint, context_sensitivity } =
+      requestBody;
+    repo_url_from_body = repo_url;
+    const authHeader = request.headers.get("authorization");
+    if (!repo_url) {
+      console.error(
+        "POST /api/analysis/callgraph: Missing required parameter: repo_url",
+      );
+      return NextResponse.json(
+        { error: "Missing required parameter: repo_url" },
+        { status: 400 },
+      );
+    }
+    if (!authHeader) {
+      console.error(
+        "POST /api/analysis/callgraph: Missing authorization header for repo:",
+        repo_url,
+      );
+      return NextResponse.json(
+        { error: "Missing authorization header" },
+        { status: 401 },
+      );
+    }
+    const backendApiEndpoint = "/analysis/callgraph"; 
+    // Use direct IP address instead of localhost to avoid potential routing issues
+    const defaultBackendBaseUrl = "http://127.0.0.1:8000"; // Default backend base URL
+
+    
+    const backendBaseUrl = process.env.BACKEND_URL || defaultBackendBaseUrl;
+
+    
+    const cleanBackendBaseUrl = backendBaseUrl.endsWith("/")
+      ? backendBaseUrl.slice(0, -1)
+      : backendBaseUrl;
+    const backendUrl = `${cleanBackendBaseUrl}${backendApiEndpoint}`;
+
+    console.log(
+      `POST /api/analysis/callgraph: Forwarding request for ${repo_url} to backend at ${backendUrl}.`,
+    );
+    // No timeout - allow the request to complete for as long as needed
+    console.log(`POST /api/analysis/callgraph: No timeout set - waiting for repository analysis to complete`);
+    
+    let backendResponse;
+    try {
+      
+      backendResponse = await fetch(backendUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authHeader,
+        },
+        body: JSON.stringify({
+          repo_url,
+          research_grade: research_grade || false,
+          framework_hint: framework_hint || "generic",
+          context_sensitivity: context_sensitivity || 2,
+        }),
+        // No timeout signal
+        cache: 'no-store',
+      });
+    } catch (error) {
+      console.error(`POST /api/analysis/callgraph: Connection error to backend:`, error);
+      
+      // Check if it's a connection error that might still be processing in the background
+      const isConnectionError = error instanceof Error;
+      
+      if (isConnectionError) {
+        console.log(`POST /api/analysis/callgraph: Connection error, but backend might still be processing`);
+        console.log(`Error details:`, error);
+        
+        // Store the repository URL in a file to help with polling
+        try {
+          const pollInfoPath = `/tmp/graphix_processing_${encodeURIComponent(repo_url.replace(/[^a-zA-Z0-9]/g, '_'))}.json`;
+          const pollInfo = {
+            repo_url: repo_url,
+            started_at: new Date().toISOString(),
+            framework_hint: framework_hint || "generic",
+            research_grade: research_grade || false
+          };
+          console.log(`Saving polling info to ${pollInfoPath}`);
+          await fs.writeFile(pollInfoPath, JSON.stringify(pollInfo, null, 2));
+        } catch (fileError) {
+          console.error("Failed to save polling information:", fileError);
+        }
+        
+        // Return a special response that indicates the backend is still processing
+        return NextResponse.json({
+          status: 'processing',
+          message: 'The analysis is taking longer than expected but is still running in the background. Please wait a few minutes and try refreshing the page to check if results are available.',
+          data: {
+            nodes: [],
+            links: [],
+            metadata: {
+              status_log_from_backend: [
+                `Analysis is still running on the backend. The repository may be complex or large.`,
+                `You can try refreshing the page in a few minutes to check for results.`,
+                `Repository URL: ${repo_url}`,
+                `Analysis started with framework hint: ${framework_hint || "generic"}`
+              ],
+              warning: 'Analysis timeout - backend processing continues',
+              status: 'processing',
+              repo_url: repo_url,
+              framework_hint: framework_hint,
+              research_grade: research_grade
+            }
+          }
+        }, { status: 202 }); // 202 Accepted indicates the request was valid but processing is not complete
+      }
+      
+      return NextResponse.json({
+        error: `Cannot connect to backend server at ${backendUrl}. Please ensure the backend server is running.`,
+        detail: error instanceof Error ? error.message : 'Unknown connection error',
+        status: 'connection_error',
+        data: {
+          nodes: [],
+          links: [],
+          metadata: {
+            error: `Backend connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            status: 'error',
+          }
+        }
+      }, { status: 503 });
+    }
+    const responseData = await backendResponse.json();
+    if (!backendResponse.ok) {
+      console.error(
+        `POST /api/analysis/callgraph: Backend request for ${repo_url} failed with status ${backendResponse.status}. Response:`,
+        responseData,
+      );
+      try {
+        const filePath = "/tmp/backend_callgraph_response.json";
+        await fs.writeFile(filePath, JSON.stringify(responseData, null, 2));
+        console.log(`Backend response saved to ${filePath}`);
+      } catch (fileError) {
+        console.error("Failed to save backend response:", fileError);
+      }
+      return NextResponse.json(responseData, {
+        status: backendResponse.status,
+      });
+    }
+    console.log(
+      `POST /api/analysis/callgraph: Received JSON response from backend for ${repo_url}.`,
+    );
+    try {
+      const filePath = "/tmp/backend_callgraph_response.json";
+      await fs.writeFile(filePath, JSON.stringify(responseData, null, 2));
+      console.log(`Backend response saved to ${filePath}`);
+    } catch (fileError) {
+      console.error("Failed to save backend response:", fileError);
+    }
+    return NextResponse.json(responseData);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "An unknown error occurred";
+    console.error(
+      `POST /api/analysis/callgraph: Error in Next.js API route for repo "${repo_url_from_body || "unknown"}":`,
+      errorMessage,
+      error,
+    );
+    return NextResponse.json(
+      {
+        error: `Frontend API route error: ${errorMessage}`,
+        detail: error instanceof Error ? error.stack : undefined,
+      },
+      { status: 500 },
+    );
+  }
+}
+
+
+// File: c:\GraphiX\frontend\src\app\api\analysis\callgraph\status\route.ts
+import { NextRequest, NextResponse } from "next/server";
+import fs from "fs/promises";
+import path from "path";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const repoUrl = searchParams.get('repo_url');
+
+    if (!repoUrl) {
+      return NextResponse.json(
+        { error: "Missing required parameter: repo_url" },
+        { status: 400 }
+      );
+    }
+
+    // First check if there's an in-progress analysis
+    const safeRepoId = encodeURIComponent(repoUrl.replace(/[^a-zA-Z0-9]/g, '_'));
+    const pollInfoPath = `/tmp/graphix_processing_${safeRepoId}.json`;
+    
+    let processingInfo = null;
+    try {
+      const fileContent = await fs.readFile(pollInfoPath, 'utf-8');
+      processingInfo = JSON.parse(fileContent);
+      console.log(`Found processing info for ${repoUrl}:`, processingInfo);
+    } catch (err) {
+      // File doesn't exist, which is fine - no in-progress analysis
+      console.log(`No processing info found for ${repoUrl}`);
+    }
+
+    // Now check if there are completed results from the backend
+    const backendApiEndpoint = "/analysis/callgraph/status"; 
+    const defaultBackendBaseUrl = "http://127.0.0.1:8000";
+    const backendBaseUrl = process.env.BACKEND_URL || defaultBackendBaseUrl;
+    const cleanBackendBaseUrl = backendBaseUrl.endsWith("/") ? backendBaseUrl.slice(0, -1) : backendBaseUrl;
+    const backendUrl = `${cleanBackendBaseUrl}${backendApiEndpoint}?repo_url=${encodeURIComponent(repoUrl)}`;
+
+    console.log(`GET /api/analysis/callgraph/status: Checking status for ${repoUrl} at ${backendUrl}`);
+    
+    try {
+      // Get the authorization header from the request if present
+      const authHeader = request.headers.get("authorization");
+      
+      const backendResponse = await fetch(backendUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authHeader ? { "Authorization": authHeader } : {})
+        },
+        cache: 'no-store',
+        signal: AbortSignal.timeout(5000), // 5-second timeout for status check
+      });
+
+      if (backendResponse.ok) {
+        const responseData = await backendResponse.json();
+        console.log(`GET /api/analysis/callgraph/status: Received status from backend:`, 
+          responseData.status || 'unknown status');
+        
+        // If analysis is complete, clean up the processing info file
+        if (responseData.status === 'completed' && processingInfo) {
+          try {
+            await fs.unlink(pollInfoPath);
+            console.log(`Removed processing info file for completed analysis: ${pollInfoPath}`);
+          } catch (err) {
+            console.warn(`Failed to remove processing info file: ${pollInfoPath}`, err);
+          }
+        }
+        
+        return NextResponse.json(responseData);
+      } else {
+        console.log(`Backend status check returned ${backendResponse.status}`);
+        // If backend doesn't know about this analysis but we have processing info,
+        // it means the analysis is still running but not completed yet
+        if (processingInfo) {
+          return NextResponse.json({
+            status: 'processing',
+            message: 'Analysis is still running on the backend',
+            started_at: processingInfo.started_at,
+            repo_url: repoUrl,
+            framework_hint: processingInfo.framework_hint,
+            research_grade: processingInfo.research_grade
+          });
+        }
+        
+        // Backend doesn't know about this analysis and we have no processing info
+        return NextResponse.json({
+          status: 'not_found',
+          message: 'No analysis found for this repository',
+        });
+      }
+    } catch (error) {
+      console.error(`Error checking backend status:`, error);
+      
+      // If backend check fails but we have processing info, assume it's still processing
+      if (processingInfo) {
+        return NextResponse.json({
+          status: 'processing',
+          message: 'Analysis appears to be running but status check failed',
+          started_at: processingInfo.started_at,
+          repo_url: repoUrl
+        });
+      }
+      
+      // No processing info and backend check failed
+      return NextResponse.json({
+        status: 'unknown',
+        message: 'Could not determine analysis status',
+      });
+    }
+  } catch (error) {
+    console.error(`Error in status check API route:`, error);
+    return NextResponse.json(
+      { 
+        error: "Error checking analysis status",
+        detail: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
+  }
+}
+
+
+// File: c:\GraphiX\frontend\src\app\api\analysis\callgraph\stream\route.ts
+import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic'; 
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const repoUrl = searchParams.get('repo_url');
+  const researchGrade = searchParams.get('research_grade') === 'true';
+  const frameworkHint = searchParams.get('framework_hint') || 'generic';
+  const contextSensitivity = searchParams.get('context_sensitivity') || '2';
+  if (!repoUrl) {
+    return new NextResponse(
+      JSON.stringify({ error: 'Missing required parameter: repo_url' }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+  try {
+    const backendUrl = new URL(`${process.env.BACKEND_URL || 'http:
+    backendUrl.search = new URLSearchParams({
+      repo_url: repoUrl,
+      research_grade: researchGrade.toString(),
+      framework_hint: frameworkHint,
+      context_sensitivity: contextSensitivity
+    }).toString();
+    const backendResponse = await fetch(backendUrl.toString(), {
+      headers: {
+        'Accept': 'text/event-stream',
+      },
+    });
+    if (!backendResponse.ok) {
+      throw new Error(`Backend request failed with status ${backendResponse.status}`);
+    }
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    (async () => {
+      try {
+        const reader = backendResponse.body?.getReader();
+        if (!reader) throw new Error('No response body');
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          await writer.write(value);
+        }
+      } catch (error) {
+        console.error('Error reading from backend:', error);
+      } finally {
+        await writer.close();
+      }
+    })();
+    return new NextResponse(readable, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
+  } catch (error) {
+    console.error('Error in API route:', error);
+    return new NextResponse(
+      JSON.stringify({ error: 'Failed to connect to analysis service' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}
+
+
+// File: c:\GraphiX\frontend\src\app\api\documentation\[repoId]\route.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { repoId: string } }
+) {
+  try {
+    const repoId = params.repoId;
+    console.log('API route GET /api/documentation/[repoId] called with repoId:', repoId);
+    
+    // Get the backend URL from environment variable or use a default
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const apiUrl = `${backendUrl}/documentation/${repoId}`;
+    
+    console.log('Requesting documentation from backend at:', apiUrl);
+    
+    // Make request to backend
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Backend error (${response.status}):`, errorText);
+      throw new Error(`Backend returned ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('Backend documentation response:', JSON.stringify(data).substring(0, 200) + '...');
+    
+    // Transform the data into a tree structure for the DocumentationTree component
+    const treeData = transformToTreeStructure(data.documentation || {});
+    console.log(`Transformed ${treeData.length} root documentation items`);
+    
+    return NextResponse.json({ 
+      documentation: treeData,
+      status: data.status,
+      generated_at: data.generated_at,
+    });
+  } catch (error) {
+    console.error('Error fetching documentation:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
+function transformToTreeStructure(documentation: any) {
+  console.log('TransformToTreeStructure called with:', typeof documentation);
+  
+  // Handle different possible input formats
+  if (!documentation) {
+    console.warn('Documentation is null or undefined');
+    return [];
+  }
+  
+  if (Array.isArray(documentation)) {
+    console.log('Documentation is already an array with', documentation.length, 'items');
+    return documentation.map(item => transformDocItem(item));
+  }
+  
+  // Handle normal case with modules, classes, functions
+  const { modules = [], classes = [], functions = [] } = documentation;
+  console.log(`Documentation contains: ${modules.length} modules, ${classes.length} classes, ${functions.length} functions`);
+  
+  // Create a map of module names to module objects
+  const moduleMap = new Map();
+  
+  // Process modules
+  const rootItems: any[] = [];
+  
+  modules.forEach((module: any) => {
+    const moduleItem = {
+      id: module.qualified_name || `module_${module.name}`,
+      name: module.name || module.qualified_name?.split('.').pop() || 'Unknown Module',
+      type: 'module',
+      children: [],
+      docstring: module.docstring || '',
+      signature: module.signature || module.qualified_name || '',
+    };
+    
+    moduleMap.set(moduleItem.id, moduleItem);
+    rootItems.push(moduleItem);
+  });
+  
+  // Process classes and add them to their parent modules
+  classes.forEach((cls: any) => {
+    if (!cls.qualified_name) {
+      console.warn('Class without qualified_name:', cls);
+      return;
+    }
+    
+    const parts = cls.qualified_name.split('.');
+    const className = parts.pop() || cls.name || 'Unknown Class';
+    const moduleName = parts.join('.');
+    
+    const classItem = {
+      id: cls.qualified_name,
+      name: cls.name || className,
+      type: 'class',
+      children: [],
+      docstring: cls.docstring || '',
+      signature: cls.signature || cls.qualified_name || '',
+      decorators: cls.decorators || [],
+      parameters: cls.parameters || [],
+      returns: cls.returns || {},
+    };
+    
+    const parentModule = moduleMap.get(moduleName);
+    if (parentModule) {
+      parentModule.children.push(classItem);
+    } else {
+      rootItems.push(classItem);
+    }
+  });
+  
+  // Process functions and add them to their parent modules or classes
+  functions.forEach((func: any) => {
+    if (!func.qualified_name) {
+      console.warn('Function without qualified_name:', func);
+      return;
+    }
+    
+    const parts = func.qualified_name.split('.');
+    const funcName = parts.pop() || func.name || 'Unknown Function';
+    const parentName = parts.join('.');
+    
+    const funcItem = {
+      id: func.qualified_name,
+      name: func.name || funcName,
+      type: func.is_method ? 'method' : 'function',
+      docstring: func.docstring || '',
+      signature: func.signature || func.qualified_name || '',
+      decorators: func.decorators || [],
+      parameters: func.parameters || [],
+      returns: func.returns || {},
+    };
+    
+    const parentModule = moduleMap.get(parentName);
+    if (parentModule) {
+      parentModule.children.push(funcItem);
+    } else {
+      // Check if it's a method in a class
+      let found = false;
+      for (const module of rootItems) {
+        if (module.children) {
+          const parentClass = module.children.find((c: any) => c.id === parentName);
+          if (parentClass) {
+            parentClass.children.push(funcItem);
+            found = true;
+            break;
+          }
+        }
+      }
+      
+      // If no parent found, add to root
+      if (!found) {
+        rootItems.push(funcItem);
+      }
+    }
+  });
+  
+  return rootItems;
+}
+
+// Helper function to transform a single documentation item
+function transformDocItem(item: any) {
+  // Simple pass-through for already formatted items
+  if (item.id && item.name && item.type) {
+    return item;
+  }
+  
+  // Transform a backend item to frontend format
+  return {
+    id: item.qualified_name || item.id || `item_${Math.random().toString(36).substring(2, 9)}`,
+    name: item.name || item.qualified_name?.split('.').pop() || 'Unknown Item',
+    type: item.type || (item.is_method ? 'method' : 'function'),
+    children: [],
+    docstring: item.docstring || '',
+    signature: item.signature || item.qualified_name || '',
+    decorators: item.decorators || [],
+    parameters: item.parameters || [],
+    returns: item.returns || {},
+  };
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { repoId: string } }
+) {
+  try {
+    const repoId = params.repoId;
+    const body = await request.json();
+    
+    // Get the backend URL from environment variable or use a default
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    
+    // Make request to backend
+    const response = await fetch(`${backendUrl}/documentation/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        repository_id: repoId,
+        framework_hint: body.framework_hint,
+        include_docstring_generation: body.include_docstring_generation || true,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend returned ${response.status}: ${await response.text()}`);
+    }
+
+    const data = await response.json();
+    
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Error generating documentation:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
+
+// File: c:\GraphiX\frontend\src\components\InteractiveGraph.ts
+"use client";
+
+import React, { useCallback, useRef } from 'react';
+import ForceGraph2D, { ForceGraphMethods, NodeObject, LinkObject } from 'react-force-graph-2d';
+
+// Define more specific types based on your data
+interface GraphNode extends NodeObject {
+  id: string;
+  type: string;
+  metadata: {
+    category?: string;
+    file_path?: string;
+    [key: string]: any;
+  };
+}
+
+interface GraphLink extends LinkObject {
+  source: string;
+  target: string;
+  type: string;
+}
+
+interface InteractiveGraphProps {
+  nodes: GraphNode[];
+  links: GraphLink[];
+}
+
+export const InteractiveGraph: React.FC<InteractiveGraphProps> = ({ nodes, links }) => {
+  const fgRef = useRef<ForceGraphMethods>();
+
+  // Define colors for different node types for better visualization
+  const getNodeColor = (node: GraphNode): string => {
+    const category = node.metadata?.category;
+    switch (category) {
+      case 'module': return 'rgba(34, 197, 94, 0.8)'; // Green
+      case 'class_definition': return 'rgba(59, 130, 246, 0.8)'; // Blue
+      case 'function_definition': return 'rgba(234, 179, 8, 0.8)'; // Yellow
+      case 'external_entity':
+      case 'external_class': return 'rgba(107, 114, 128, 0.8)'; // Gray
+      case 'fallback_node':
+      case 'unresolved_class': return 'rgba(239, 68, 68, 0.8)'; // Red
+      default: return 'rgba(156, 163, 175, 0.8)'; // Default Gray
+    }
+  };
+
+  const handleNodeClick = useCallback((node: NodeObject) => {
+    // Center the view on the clicked node
+    const graphNode = node as GraphNode;
+    if (fgRef.current) {
+        fgRef.current.centerAt(graphNode.x, graphNode.y, 1000);
+        fgRef.current.zoom(2.5, 1000);
+    }
+    console.log("Clicked Node:", graphNode);
+    // Here you can implement logic to show details in another panel
+  }, []);
+
+  const paintNode = useCallback((node: NodeObject, color: string, ctx: CanvasRenderingContext2D) => {
+    const graphNode = node as GraphNode;
+    const label = graphNode.id.split('.').pop() || graphNode.id;
+    const fontSize = 10 / (fgRef.current?.zoom() || 1);
+
+    ctx.fillStyle = color;
+    
+    // Draw the node shape
+    ctx.beginPath();
+    ctx.arc(graphNode.x!, graphNode.y!, 4, 0, 2 * Math.PI, false);
+    ctx.fill();
+
+    // Draw the label
+    if (fgRef.current && fgRef.current.zoom() > 1.5) {
+        ctx.font = `${fontSize}px Sans-Serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; // White text for visibility
+        ctx.fillText(label, graphNode.x!, graphNode.y! + 8);
+    }
+  }, []);
+
+  return (
+    <ForceGraph2D
+      ref={fgRef}
+      graphData={{ nodes, links }}
+      nodeId="id"
+      nodeVal={node => 1} // All nodes have the same base size
+      nodeColor={node => getNodeColor(node as GraphNode)}
+      nodeCanvasObject={paintNode}
+      nodeLabel={node => {
+        const n = node as GraphNode;
+        return `<div class="bg-gray-800 text-white text-xs p-2 rounded">
+                    <strong>ID:</strong> ${n.id}<br/>
+                    <strong>Type:</strong> ${n.type}<br/>
+                    <strong>Category:</strong> ${n.metadata?.category || 'N/A'}<br/>
+                    <strong>File:</strong> ${n.metadata?.file_path || 'N/A'}
+                </div>`;
+      }}
+      linkColor={() => 'rgba(255,255,255,0.2)'}
+      linkWidth={0.5}
+      linkDirectionalParticles={1}
+      linkDirectionalParticleWidth={1.5}
+      linkDirectionalParticleSpeed={0.006}
+      onNodeClick={handleNodeClick}
+      backgroundColor="#111827" // Dark background for better contrast
+      cooldownTicks={100}
+      onEngineStop={() => fgRef.current?.zoomToFit(400)}
+    />
+  );
+};
+
+// File: c:\GraphiX\frontend\src\components\ui\use-toast.ts
+"use client";
+import * as React from "react";
+import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
+const TOAST_LIMIT = 1;
+const TOAST_REMOVE_DELAY = 1000000;
+type ToasterToast = ToastProps & {
+  id: string;
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  action?: ToastActionElement;
+};
+const actionTypes = {
+  ADD_TOAST: "ADD_TOAST",
+  UPDATE_TOAST: "UPDATE_TOAST",
+  DISMISS_TOAST: "DISMISS_TOAST",
+  REMOVE_TOAST: "REMOVE_TOAST",
+} as const;
+let count = 0;
+function genId() {
+  count = (count + 1) % Number.MAX_SAFE_INTEGER;
+  return count.toString();
+}
+type ActionType = typeof actionTypes;
+type Action =
+  | {
+      type: ActionType["ADD_TOAST"];
+      toast: ToasterToast;
+    }
+  | {
+      type: ActionType["UPDATE_TOAST"];
+      toast: Partial<ToasterToast>;
+    }
+  | {
+      type: ActionType["DISMISS_TOAST"];
+      toastId?: ToasterToast["id"];
+    }
+  | {
+      type: ActionType["REMOVE_TOAST"];
+      toastId?: ToasterToast["id"];
+    };
+interface State {
+  toasts: ToasterToast[];
+}
+const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+const addToRemoveQueue = (toastId: string) => {
+  if (toastTimeouts.has(toastId)) {
+    return;
+  }
+  const timeout = setTimeout(() => {
+    toastTimeouts.delete(toastId);
+    dispatch({
+      type: "REMOVE_TOAST",
+      toastId: toastId,
+    });
+  }, TOAST_REMOVE_DELAY);
+  toastTimeouts.set(toastId, timeout);
+};
+export const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case "ADD_TOAST":
+      return {
+        ...state,
+        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
+      };
+    case "UPDATE_TOAST":
+      return {
+        ...state,
+        toasts: state.toasts.map((t) =>
+          t.id === action.toast.id ? { ...t, ...action.toast } : t,
+        ),
+      };
+    case "DISMISS_TOAST": {
+      const { toastId } = action;
+      if (toastId) {
+        addToRemoveQueue(toastId);
+      } else {
+        state.toasts.forEach((toast) => {
+          addToRemoveQueue(toast.id);
+        });
+      }
+      return {
+        ...state,
+        toasts: state.toasts.map((t) =>
+          t.id === toastId || toastId === undefined
+            ? {
+                ...t,
+                open: false,
+              }
+            : t,
+        ),
+      };
+    }
+    case "REMOVE_TOAST":
+      if (action.toastId === undefined) {
+        return {
+          ...state,
+          toasts: [],
+        };
+      }
+      return {
+        ...state,
+        toasts: state.toasts.filter((t) => t.id !== action.toastId),
+      };
+  }
+};
+const listeners: Array<(state: State) => void> = [];
+let memoryState: State = { toasts: [] };
+function dispatch(action: Action) {
+  memoryState = reducer(memoryState, action);
+  listeners.forEach((listener) => {
+    listener(memoryState);
+  });
+}
+type Toast = Omit<ToasterToast, "id">;
+function toast({ ...props }: Toast) {
+  const id = genId();
+  const update = (props: ToasterToast) =>
+    dispatch({
+      type: "UPDATE_TOAST",
+      toast: { ...props, id },
+    });
+  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id });
+  dispatch({
+    type: "ADD_TOAST",
+    toast: {
+      ...props,
+      id,
+      open: true,
+      onOpenChange: (open) => {
+        if (!open) dismiss();
+      },
+    },
+  });
+  return {
+    id: id,
+    dismiss,
+    update,
+  };
+}
+function useToast() {
+  const [state, setState] = React.useState<State>(memoryState);
+  React.useEffect(() => {
+    listeners.push(setState);
+    return () => {
+      const index = listeners.indexOf(setState);
+      if (index > -1) {
+        listeners.splice(index, 1);
+      }
+    };
+  }, [state]);
+  return {
+    ...state,
+    toast,
+    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+  };
+}
+export { useToast, toast };
+
+
+// File: c:\GraphiX\frontend\src\hooks\useCallgraphAnalysis.ts
+import { useState, useCallback } from "react";
+import { useToast } from "@/components/ui/use-toast";
+interface BackendDataContent {
+  nodes: any[];
+  links: any[];
+  metadata?: {
+    framework_analyzed_as?: string;
+    endpoint_runtime_seconds?: number;
+    research_grade_requested?: boolean;
+    status_log_from_backend?: string[];
+    warning?: string;
+    [key: string]: any;
+  };
+}
+interface BackendResponse {
+  status: string;
+  data?: BackendDataContent;
+  metrics?: {
+    node_count: number;
+    edge_count: number;
+  };
+  message?: string;
+  status_log?: string[];
+}
+interface AnalysisDisplayResult {
+  nodes: any[];
+  links: any[];
+  metadata?: BackendDataContent["metadata"];
+  metrics?: BackendResponse["metrics"];
+}
+export const useCallgraphAnalysis = () => {
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [status, setStatus] = useState<string>("Ready");
+  const [result, setResult] = useState<AnalysisDisplayResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [statusLog, setStatusLog] = useState<string[]>([]);
+  const startAnalysis = useCallback(
+    async (
+      repoUrl: string,
+      options?: {
+        researchGrade?: boolean;
+        frameworkHint?: string;
+        contextSensitivity?: number;
+      },
+    ) => {
+      setIsLoading(true);
+      setStatus("Initializing analysis...");
+      setError(null);
+      setResult(null);
+      setStatusLog(["Initializing analysis..."]);
+      const token = localStorage.getItem("token");
+      if (!token) {
+        const errorMsg = "Authentication token not found. Please log in.";
+        setError(errorMsg);
+        toast({ title: "Authentication Error", description: errorMsg, variant: "destructive" });
+        setIsLoading(false);
+        setStatus("Error");
+        return;
+      }
+      try {
+        const response = await fetch("/api/analysis/callgraph", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            repo_url: repoUrl,
+            research_grade: options?.researchGrade || false,
+            framework_hint: options?.frameworkHint || "generic",
+            context_sensitivity: options?.contextSensitivity || 2,
+          }),
+        });
+        const responseData: BackendResponse = await response.json();
+        if (responseData.status_log && responseData.status_log.length > 0) {
+          setStatusLog(responseData.status_log);
+          setStatus(
+            responseData.status_log[responseData.status_log.length - 1],
+          );
+        } else if (
+          responseData.data?.metadata?.status_log_from_backend &&
+          responseData.data.metadata.status_log_from_backend.length > 0
+        ) {
+          const backendStatusLog =
+            responseData.data.metadata.status_log_from_backend;
+          setStatusLog(backendStatusLog);
+          setStatus(backendStatusLog[backendStatusLog.length - 1]);
+        }
+        // Handle different status responses from the server
+        if (responseData.status === "processing") {
+          console.log("Analysis is still processing on the backend", responseData);
+          // Set a special status for processing
+          setStatus("Processing - analysis is still running on the backend");
+          setStatusLog(prev => [
+            ...prev, 
+            "The analysis is taking longer than expected but is still running.",
+            "You can check back later by refreshing the page."
+          ]);
+          // We don't want to show an error, but we do want to let the user know it's not done yet
+          toast({ title: "Analysis In Progress", description: "The analysis is taking longer than expected and is still running on the backend. You can check back later by refreshing the page.", variant: "default" });
+          setIsLoading(false);
+          return;
+        }
+        
+        if (!response.ok || responseData.status === "error") {
+          const errorMessage =
+            responseData.message ||
+            `Analysis failed with status: ${response.status}`;
+          console.error("Analysis error:", responseData);
+          setError(errorMessage);
+          toast({ title: "Analysis Error", description: errorMessage, variant: "destructive" });
+          setStatus("Error");
+          setIsLoading(false);
+          return;
+        }
+
+        if (responseData.status === "completed" && responseData.data) {
+          // Successfully received complete analysis
+          setResult({
+            nodes: responseData.data.nodes,
+            links: responseData.data.links,
+            metadata: responseData.data.metadata,
+            metrics: responseData.metrics,
+          });
+          setStatus("Analysis complete");
+          toast({ title: "Analysis Complete", description: "Callgraph analysis finished successfully.", variant: "success" });
+          if (responseData.data.metadata?.warning) {
+            const warningMsg = responseData.data.metadata.warning;
+            setStatus(
+              `Analysis complete with warning: ${warningMsg}`,
+            );
+            toast({ title: "Analysis Warning", description: warningMsg, variant: "default" });
+          }
+        } else if (responseData.data?.metadata?.status === "processing") {
+          // Another way the backend might indicate processing status
+          setStatus("Processing - analysis is still running on the backend");
+          setStatusLog(prev => [
+            ...prev, 
+            "The analysis is running on the backend and taking longer than expected.",
+            "Please check back in a few minutes by refreshing the page."
+          ]);
+          toast({ title: "Analysis In Progress", description: "The analysis is running on the backend and taking longer than expected. Please check back by refreshing.", variant: "default" });
+          setIsLoading(false);
+        } else {
+          // Unexpected response format
+          const errMsg = "Received unexpected response structure from server.";
+          console.warn("Unexpected response structure:", responseData);
+          setError(errMsg);
+          toast({ title: "Server Error", description: errMsg, variant: "destructive" });
+          setStatus("Error");
+        }
+      } catch (err) {
+        console.error("Failed to start analysis:", err);
+        const message =
+          err instanceof Error
+            ? err.message
+            : "An unknown error occurred during analysis setup.";
+        setError(message);
+        toast({ title: "Request Error", description: message, variant: "destructive" });
+        setStatusLog((prev) => [...prev, `Error: ${message}`]);
+        setStatus("Error");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [],
+  );
+  const reset = useCallback(() => {
+    setIsLoading(false);
+    setStatus("Ready");
+    setError(null);
+    setResult(null);
+    setStatusLog([]);
+  }, []);
+  return {
+    isLoading,
+    status,
+    result,
+    error,
+    statusLog,
+    startAnalysis,
+    reset,
+  };
+};
+
+
+// File: c:\GraphiX\frontend\src\hooks\useDocumentationPolling.ts
+// frontend/src/hooks/useDocumentationPolling.ts
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useToast } from '@/components/ui/use-toast';
+import {
+  fetchDocumentationStatus,
+  DocumentationStatusResponse,
+  Documentation,
+} from '@/lib/analysisService';
+
+interface UseDocumentationPollingOptions {
+  pollingInterval?: number; // in milliseconds
+  onSuccess?: (documentation: Documentation) => void;
+  onError?: (error: Error) => void;
+  onProcessing?: () => void;
+}
+
+interface UseDocumentationPollingReturn {
+  documentation: Documentation | null;
+  isLoading: boolean;
+  error: Error | null;
+  startPolling: (docId: string) => void;
+  stopPolling: () => void;
+  pollingStatus: 'idle' | 'polling' | 'completed' | 'failed';
+}
+
+const DEFAULT_POLLING_INTERVAL = 5000; // 5 seconds
+
+export const useDocumentationPolling = ({
+  pollingInterval = DEFAULT_POLLING_INTERVAL,
+  onSuccess,
+  onError,
+  onProcessing,
+}: UseDocumentationPollingOptions = {}): UseDocumentationPollingReturn => {
+  const { toast } = useToast();
+  const [documentation, setDocumentation] = useState<Documentation | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [pollingStatus, setPollingStatus] = useState<'idle' | 'polling' | 'completed' | 'failed'>('idle');
+
+  const intervalIdRef = useRef<NodeJS.Timeout | null>(null);
+  const currentDocIdRef = useRef<string | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (intervalIdRef.current) {
+      clearInterval(intervalIdRef.current);
+      intervalIdRef.current = null;
+    }
+    setIsLoading(false);
+    // Don't reset pollingStatus here, let it reflect the last known state
+  }, []);
+
+  const poll = useCallback(async (docId: string) => {
+    if (currentDocIdRef.current !== docId) {
+        // If docId changed, reset state before starting new poll
+        setDocumentation(null);
+        setError(null);
+        setPollingStatus('polling');
+    }
+    currentDocIdRef.current = docId;
+    setIsLoading(true);
+    if (onProcessing) onProcessing();
+
+    try {
+      const result: DocumentationStatusResponse = await fetchDocumentationStatus(docId);
+      console.log('Polling status:', result.status, 'for docId:', docId);
+
+      if (result.status === 'completed') {
+        setDocumentation(result.documentation || null);
+        setPollingStatus('completed');
+        setIsLoading(false);
+        if (onSuccess && result.documentation) onSuccess(result.documentation);
+        toast({ title: 'Documentation Ready', description: `Documentation for ${docId} has been successfully generated.`, variant: 'success' });
+        stopPolling();
+      } else if (result.status === 'failed') {
+        const err = new Error(result.error || 'Documentation generation failed on the backend.');
+        setError(err);
+        setPollingStatus('failed');
+        setIsLoading(false);
+        if (onError) onError(err);
+        toast({ title: 'Documentation Failed', description: `Failed to generate documentation for ${docId}: ${err.message}`, variant: 'destructive' });
+        stopPolling();
+      } else { // 'processing'
+        setPollingStatus('polling');
+        // Continue polling, isLoading remains true
+      }
+    } catch (err) {
+      const pollingError = err instanceof Error ? err : new Error('Error during documentation polling');
+      console.error('Error during documentation polling:', pollingError);
+      setError(pollingError);
+      setPollingStatus('failed');
+      setIsLoading(false);
+      if (onError) onError(pollingError);
+      toast({ title: 'Polling Error', description: `Error polling for documentation ${docId}: ${pollingError.message}`, variant: 'destructive' });
+      stopPolling();
+    }
+  }, [stopPolling, onSuccess, onError, onProcessing]);
+
+  const startPolling = useCallback((docId: string) => {
+    stopPolling(); // Clear any existing polling interval
+    setPollingStatus('polling');
+    poll(docId); // Initial immediate poll
+    intervalIdRef.current = setInterval(() => poll(docId), pollingInterval);
+  }, [poll, pollingInterval, stopPolling]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopPolling();
+    };
+  }, [stopPolling]);
+
+  return {
+    documentation,
+    isLoading,
+    error,
+    startPolling,
+    stopPolling,
+    pollingStatus,
+  };
+};
+
+// File: c:\GraphiX\frontend\src\lib\analysisService.ts
+// frontend/src/lib/analysisService.ts
+
+import { getToken } from "./auth";
+import { jwtDecode } from "jwt-decode";
+
+export interface CallgraphData {
+  nodes: any[]; // Define more specific types as needed
+  links: any[]; // Define more specific types as needed
+  metadata?: Record<string, any>;
+}
+
+export interface CallgraphMetrics {
+  node_count: number;
+  edge_count: number;
+}
+
+export interface InitialAnalysisResponse {
+  status: string;
+  data: CallgraphData;
+  metrics: CallgraphMetrics;
+  status_log: string[];
+  documentation_id?: string;
+  error?: string;
+}
+
+export interface Documentation {
+  modules: any[]; // Define more specific types as needed
+  classes: any[]; // Define more specific types as needed
+  functions: any[]; // Define more specific types as needed
+  // Add other documentation fields as they are defined in the backend
+}
+
+export interface DocumentationStatusResponse {
+  documentation_id: string;
+  repository_id: string;
+  status: 'processing' | 'completed' | 'failed';
+  generated_at: string;
+  completed_at?: string;
+  modules_count: number;
+  classes_count: number;
+  functions_count: number;
+  framework?: string;
+  documentation?: Documentation; // Present when status is 'completed'
+  markdown_files?: Record<string, string>; // Present when status is 'completed'
+  error?: string; // Present when status is 'failed'
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+const getAuthHeaders = () => {
+  const token = getToken();
+  if (token) {
+    return { Authorization: `Bearer ${token}` };
+  }
+  return {};
+};
+
+/**
+ * Initiates the callgraph analysis for a given repository URL.
+ * @param repoUrl The URL of the repository to analyze.
+ * @param researchGrade Whether to perform research-grade analysis.
+ * @returns A promise that resolves to the initial analysis response.
+ */
+export const initiateAnalysis = async (
+  repoUrl: string,
+  researchGrade: boolean = false
+): Promise<InitialAnalysisResponse> => {
+  const response = await fetch(`${API_BASE_URL}/analysis/callgraph`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ repo_url: repoUrl, research_grade: researchGrade }),
+  });
+
+  if (!response.ok) {
+    const errorResult = await response.json().catch(() => ({ message: 'Failed to initiate analysis and parse error response.' }));
+    console.error('Failed to initiate analysis:', response.status, errorResult);
+    throw new Error(errorResult.detail || errorResult.message || `HTTP error ${response.status}`);
+  }
+
+  return response.json() as Promise<InitialAnalysisResponse>;
+};
+
+/**
+ * Fetches the status of documentation generation for a given documentation ID.
+ * @param docId The ID of the documentation job.
+ * @returns A promise that resolves to the documentation status response.
+ */
+export const fetchDocumentationStatus = async (
+  docId: string
+): Promise<DocumentationStatusResponse> => {
+  const response = await fetch(`${API_BASE_URL}/documentation/${docId}`, {
+    headers: { ...getAuthHeaders() },
+  });
+
+  if (!response.ok) {
+    const errorResult = await response.json().catch(() => ({ message: 'Failed to fetch documentation status and parse error response.' }));
+    console.error('Failed to fetch documentation status:', response.status, errorResult);
+    throw new Error(errorResult.detail || errorResult.message || `HTTP error ${response.status}`);
+  }
+
+  return response.json() as Promise<DocumentationStatusResponse>;
+};
+
+// File: c:\GraphiX\frontend\src\lib\auth.ts
+import { jwtDecode } from "jwt-decode";
+export interface User {
+  login: string;
+  name: string;
+  email: string;
+  avatar_url: string;
+}
+export interface Token {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+export const setToken = (token: string): void => {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("token", token);
+  }
+};
+export const getToken = (): string | null => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("token");
+  }
+  return null;
+};
+export const removeToken = (): void => {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("token");
+  }
+};
+export const getUser = (): User | null => {
+  if (typeof window !== "undefined") {
+    const token = getToken();
+    if (!token) return null;
+    try {
+      const decoded: any = jwtDecode(token);
+      return decoded.user || null;
+    } catch (error) {
+      return null;
+    }
+  }
+  return null;
+};
+export const isAuthenticated = (): boolean => {
+  if (typeof window !== "undefined") {
+    const token = getToken();
+    if (!token) return false;
+    try {
+      const decoded: any = jwtDecode(token);
+      return decoded.exp * 1000 > Date.now();
+    } catch (error) {
+      return false;
+    }
+  }
+  return false;
+};
+export const loginWithGitHub = async (): Promise<void> => {
+  window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/login`;
+};
+export const handleGitHubCallback = async (code: string): Promise<Token> => {
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/auth/callback?code=${code}`,
+  );
+  if (!response.ok) {
+    throw new Error("Failed to authenticate with GitHub");
+  }
+  return response.json();
+};
+
+
+// File: c:\GraphiX\frontend\src\lib\utils.ts
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+// Function to get a display label for a node
+export function getNodeLabel(node: { id: string; label?: string; name?: string }): string {
+  return node.label || node.name || node.id;
+}
+
+// Function to truncate text to a specified length
+export function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) {
+    return text;
+  }
+  return text.substring(0, maxLength) + "...";
+}
+
+
+// File: c:\GraphiX\frontend\src\lib\types\index.ts
+export interface CallgraphNode {
+  id: string;
+  group: number;
+  type: "function" | "method" | "class" | "module";
+  complexity: number;
+  file?: string;
+  className?: string;
+  metadata?: {
+    parameters?: string[];
+    returns?: string;
+    docstring?: string;
+    decorators?: string[];
+    http_methods?: string[];
+    security?: string[];
+    refactoring?: string;
+  };
+}
+export interface CallgraphLink {
+  source: string;
+  target: string;
+  value?: number;
+  type?: "call" | "inheritance" | "import" | "dependency";
+  metadata?: {
+    line_number?: number;
+    context?: string;
+    is_dynamic?: boolean;
+  };
+}
+export interface CallgraphData {
+  nodes: CallgraphNode[];
+  links: CallgraphLink[];
+  classes?: string[];
+  imports?: Record<string, string[]>;
+  metadata?: {
+    repo_url?: string;
+    analysis_date?: string;
+    language?: string;
+    framework?: string;
+    stats?: {
+      total_nodes: number;
+      total_links: number;
+      avg_complexity: number;
+      most_complex_node?: string;
+    };
+  };
+}
+export interface CallgraphVisualizationConfig {
+  nodeColorScheme?: "group" | "complexity" | "type";
+  linkColorScheme?: "type" | "value";
+  showNodeLabels?: boolean;
+  showTooltips?: boolean;
+  physics?: {
+    repulsion?: number;
+    gravity?: number;
+    linkDistance?: number;
+  };
+}
+export interface EnrichedCallgraphNode extends CallgraphNode {
+  llm_analysis?: {
+    purpose?: string;
+    quality_metrics?: {
+      cohesion?: number;
+      coupling?: number;
+      readability?: number;
+    };
+    suggestions?: {
+      refactoring?: string[];
+      documentation?: string[];
+    };
+  };
+}
+
+
+// File: c:\GraphiX\frontend\src\lib\visualization\attributes.ts
+export interface CallgraphLink {
+  source: string;
+  target: string;
+  type?: string;
+}
+
+export interface CallgraphNode {
+  id: string;
+  name: string;
+  type?: string;
+}
+
+export interface VisualizationAttributes {
+  nodeSize: (node: CallgraphNode) => number;
+  nodeColor: (node: CallgraphNode) => string;
+  nodeLabel: (node: CallgraphNode) => string;
+  linkColor: (link: CallgraphLink) => string;
+  linkWidth: (link: CallgraphLink) => number;
+  linkDashArray: (link: CallgraphLink) => string | null;
+}
+
+export class DynamicAttributeProvider {
+  static getAttributes(framework: string): VisualizationAttributes {
+    // Placeholder implementation
+    return {
+      nodeSize: (node: CallgraphNode) => 10,
+      nodeColor: (node: CallgraphNode) => "#666",
+      nodeLabel: (node: CallgraphNode) => node.name,
+      linkColor: (link: CallgraphLink) => "#999",
+      linkWidth: (link: CallgraphLink) => 1,
+      linkDashArray: (link: CallgraphLink) => null,
+    };
+  }
+}
+

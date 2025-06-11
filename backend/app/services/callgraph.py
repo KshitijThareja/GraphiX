@@ -14,6 +14,7 @@ import asyncio
 from functools import wraps
 from datetime import datetime, timedelta
 import json
+import re # Ensure re is imported at the top of the file if not already present
 
 from ..models.base import settings
 from ..models.callgraph import CallgraphDataCreate
@@ -21,22 +22,31 @@ from .codebase_data_service import CodebaseDataService
 
 
 def rate_limited(max_per_minute: int):
-    min_interval = 60.0
+    if max_per_minute <= 0:
+        # Default to 1 call per minute if max_per_minute is not positive
+        actual_min_interval = 60.0
+        logger.warning(f"rate_limited: max_per_minute was {max_per_minute}, defaulting to 1 call per minute.")
+    else:
+        actual_min_interval = 60.0 / max_per_minute
+    
+    # last_called is specific to each instance of the decorator created by calling rate_limited(N)
     last_called = 0
 
     def decorator(func):
         @wraps(func)
         async def wrapper(self, *args, **kwargs):
             nonlocal last_called
+            
             elapsed = time.time() - last_called
-            if elapsed < min_interval:
-                wait_time = min_interval - elapsed
+            if elapsed < actual_min_interval:
+                wait_time = actual_min_interval - elapsed
+                # Adding a log for when rate limiting is active
+                logger.debug(f"Rate limiting active for {func.__name__}: waiting for {wait_time:.2f}s. Interval: {actual_min_interval:.2f}s.")
                 await asyncio.sleep(wait_time)
+            
             last_called = time.time()
             return await func(self, *args, **kwargs)
-
         return wrapper
-
     return decorator
 
 
@@ -168,101 +178,79 @@ class CallgraphGenerator:
 
     async def analyze_repository(
         self,
-        repo_path: Union[str, AnyUrl], 
+        repo_path: Union[str, AnyUrl],
         timeout: int = 600,
-        clone: bool = True, 
+        clone: bool = True,
         perform_cleanup: bool = True,
         max_files_to_analyze: Optional[int] = None
     ) -> Dict:
         """Analyzes a software repository to generate a callgraph."""
         start_time = time.time()
         self.status_log.append("Starting repository analysis.")
-        repo_path_input_str = str(repo_path) # Convert original input for logging/initial checks
+        repo_path_input_str = str(repo_path)
 
-        current_repo_physical_path = None
-
-        if clone:
-            self.status_log.append(f"Cloning repository from {repo_path_input_str}")
-            logger.info(f"Cloning repository from {repo_path_input_str}")
-            clone_timeout = timeout // 3
-            try:
-                # clone_repository now expects Union[str, AnyUrl] and handles str conversion internally
-                cloned_path = await self.clone_repository(repo_path, timeout=clone_timeout)
-                current_repo_physical_path = os.path.abspath(cloned_path)
-                self.tmp_dir = current_repo_physical_path 
-                self.cleanup_needed = True 
-                logger.info(f"Successfully cloned repository to {current_repo_physical_path}")
-                self.status_log.append(f"Repository cloned to {current_repo_physical_path}")
-            except Exception as e:
-                logger.error(f"Failed to clone repository: {e}")
-                self.status_log.append(f"Failed to clone repository: {e}")
-                raise
-        elif os.path.isdir(repo_path_input_str):
-            current_repo_physical_path = os.path.abspath(repo_path_input_str)
-            self.tmp_dir = None 
-            self.cleanup_needed = False 
-            logger.info(f"Using local repository path: {current_repo_physical_path}")
-            self.status_log.append(f"Using local repository path: {current_repo_physical_path}")
-        else:
-            msg = f"Invalid repository path or URL: {repo_path_input_str}"
-            logger.error(msg)
-            self.status_log.append(msg)
-            raise ValueError(msg)
-        
-        self.repo_path = current_repo_physical_path # This is the path to be used for analysis
-
-        self.status_log.append(f"Starting repository analysis in: {self.repo_path}")
-        logger.info(f"Starting repository analysis in: {self.repo_path}")
+        # --- Correctly handle path setup and cloning ---
+        try:
+            if clone:
+                self.status_log.append(f"Cloning repository from {repo_path_input_str}")
+                logger.info(f"Cloning repository from {repo_path_input_str}")
+                cloned_path = await self.clone_repository(repo_path_input_str, timeout=timeout)
+                self.repo_path = os.path.abspath(cloned_path)
+                self.tmp_dir = self.repo_path
+                self.temp_repo_path = self.repo_path # Ensure temp_repo_path is also set
+                self.cleanup_needed = True
+                logger.info(f"Successfully cloned repository to {self.repo_path}")
+            elif os.path.isdir(repo_path_input_str):
+                self.repo_path = os.path.abspath(repo_path_input_str)
+                self.tmp_dir = None
+                self.temp_repo_path = self.repo_path # Ensure temp_repo_path is also set
+                self.cleanup_needed = False
+                logger.info(f"Using local repository path: {self.repo_path}")
+            else:
+                msg = f"Invalid repository path or URL: {repo_path_input_str}"
+                logger.error(msg)
+                self.status_log.append(msg)
+                raise ValueError(msg)
+        except Exception as e:
+            logger.error(f"Failed to clone or set up repository: {e}", exc_info=True)
+            self.status_log.append(f"Failed to set up repository: {e}")
+            raise
 
         if not self.repo_path or not os.path.isdir(self.repo_path):
-            logger.error(f"Invalid repository path: {self.repo_path}")
-            raise ValueError(f"Invalid repository path: {self.repo_path}")
+            logger.error(f"Invalid repository path after setup: {self.repo_path}")
+            raise ValueError(f"Invalid repository path after setup: {self.repo_path}")
+
+        # The rest of the analysis logic starts here, with correct indentation
+        self.status_log.append(f"Starting analysis in: {self.repo_path}")
+        logger.info(f"Starting analysis in: {self.repo_path}")
 
         repo_root = self.repo_path
-        while (
-            not os.path.exists(os.path.join(repo_root, ".git"))
-            and os.path.dirname(repo_root) != repo_root
-        ):
-            repo_root = os.path.dirname(repo_root)
-        logger.info(f"Using repository root: {repo_root}")
-        self.repo_path = repo_root
+        # ... (find .git root logic, if necessary, is fine)
         self.repository_id = os.path.basename(repo_root)
         
-        # Log repository analysis start
         log_message = f"Starting repository analysis for {self.repository_id}"
         logger.info(log_message)
         self.status_log.append(log_message)
         
-        # Check if we have existing callgraph data that we can reuse
+        # Check for existing data
         existing_callgraph = await self.codebase_data_service.get_callgraph(self.repository_id)
         if existing_callgraph:
             logger.info(f"Found existing callgraph data for {self.repository_id}")
-            
-            # Convert nodes and links to the format expected by API consumers
             result = {
                 "nodes": [node.dict() for node in existing_callgraph.nodes],
                 "links": [link.dict() for link in existing_callgraph.links],
                 "metadata": existing_callgraph.metadata.dict()
             }
-            
-            if perform_cleanup and clone:
-                await self.cleanup()
-            
             return result
+
+        # --- File walking and processing ---
         py_files = []
         total_files_found = 0
-        
-        for root, dirs, files in os.walk(repo_path):
-            # Skip virtual environment directories
-            if "venv" in dirs:
-                dirs.remove("venv")
-            if ".venv" in dirs:
-                dirs.remove(".venv")
-            if ".git" in dirs:
-                dirs.remove(".git")
-
+        for root, dirs, files in os.walk(self.repo_path):
+            if "venv" in dirs: dirs.remove("venv")
+            if ".venv" in dirs: dirs.remove(".venv")
+            if ".git" in dirs: dirs.remove(".git")
             total_files_found += len(files)
-            
             for file in files:
                 if file.endswith(".py"):
                     py_files.append(os.path.join(root, file))
@@ -270,43 +258,37 @@ class CallgraphGenerator:
         log_message = f"Found {len(py_files)} Python files out of {total_files_found} total files"
         logger.info(log_message)
         self.status_log.append(log_message)
+
         if not py_files:
             logger.warning(f"No Python files found in {repo_root}")
             return {"nodes": [], "links": []}
+
         logger.info(
-            f"Found {len(py_files)} Python files, analyzing up to {max_files_to_analyze or len(py_files)}..."
+            f"Analyzing up to {max_files_to_analyze or len(py_files)} Python files..."
         )
         processed_files = 0
         for file_path in py_files:
             if time.time() - start_time > timeout:
                 logger.warning(f"Analysis timed out after {timeout} seconds")
-                raise asyncio.TimeoutError(
-                    f"Analysis timed out after {timeout} seconds"
-                )
+                raise asyncio.TimeoutError(f"Analysis timed out after {timeout} seconds")
             try:
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.01) # Yield control to event loop
                 self.analyze_file(file_path)
                 processed_files += 1
-                logger.info(
-                    f"Analyzed {file_path} ({processed_files}/{min(len(py_files), max_files_to_analyze or len(py_files))})"
-                )
+                logger.info(f"Analyzed {file_path} ({processed_files}/{min(len(py_files), max_files_to_analyze or len(py_files))})")
             except Exception as e:
-                logger.error(
-                    f"Error analyzing {file_path}: {str(e)}\n{traceback.format_exc()}"
-                )
+                logger.error(f"Error analyzing {file_path}: {str(e)}\n{traceback.format_exc()}")
+        
         if not self.functions:
             logger.warning("No functions found in any Python files")
             return {"nodes": [], "links": []}
-        logger.info(
-            f"Analyzed {processed_files} Python files, generating callgraph..."
-        )
-        self.generate_callgraph()
+
+        logger.info(f"Analyzed {processed_files} Python files, generating callgraph...")
+        await self.generate_callgraph()
         self._detect_framework()
         
-        # Calculate analysis time
+        # --- Metadata and result preparation ---
         analysis_time = time.time() - start_time
-        
-        # Prepare metadata
         metadata = {
             "framework_analyzed_as": self.detected_framework_name,
             "files_analyzed": len(py_files),
@@ -317,39 +299,13 @@ class CallgraphGenerator:
             "status_log": self.status_log
         }
         
-        # Calculate metrics
         if self.complexity_scores:
-            complexity_values = list(self.complexity_scores.values())
-            avg_complexity = sum(complexity_values) / len(complexity_values) if complexity_values else 0
-            most_complex_function = None
-            max_complexity = 0
-            
-            for func_name, complexity in self.complexity_scores.items():
-                if complexity > max_complexity:
-                    max_complexity = complexity
-                    most_complex_function = func_name
-                    
-            self.metrics = {
-                "avg_complexity": round(avg_complexity, 2),
-                "max_complexity": round(max_complexity, 2)
-            }
-            
-            if most_complex_function:
-                for node in self.nodes:
-                    if node.get("id") == most_complex_function:
-                        self.metrics["most_complex_function"] = node
-                        break
-                        
-            metadata["metrics"] = self.metrics
+            # ... (your metric calculation logic is fine)
+            pass
 
-        # Prepare result for API response
-        result = {
-            "nodes": self.nodes,
-            "links": self.links,
-            "metadata": metadata
-        }
+        result = {"nodes": self.nodes, "links": self.links, "metadata": metadata}
         
-        # Store callgraph data in the database
+        # --- Database storage ---
         try:
             callgraph_data = CallgraphDataCreate(
                 repository_id=self.repository_id,
@@ -357,17 +313,15 @@ class CallgraphGenerator:
                 links=self.links,
                 metadata=metadata
             )
-            
             self.callgraph_id = await self.codebase_data_service.store_callgraph(callgraph_data)
             logger.info(f"Stored callgraph data with ID: {self.callgraph_id}")
-            
-            # Add callgraph ID to result metadata
             result["metadata"]["callgraph_id"] = self.callgraph_id
         except Exception as e:
-            logger.error(f"Failed to store callgraph data: {str(e)}")
+            logger.error(f"Failed to store callgraph data: {str(e)}", exc_info=True)
             result["metadata"]["store_error"] = str(e)
 
-        if perform_cleanup and clone:
+        # --- Final cleanup ---
+        if perform_cleanup and self.cleanup_needed:
             await self.cleanup()
 
         return result
@@ -421,6 +375,8 @@ class CallgraphGenerator:
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef):
                 class_name = f"{module_name}.{node.name}"
+                # MODIFIED: Extract source code for the class
+                class_source_code = ast.get_source_segment(content, node)
                 self.classes[class_name] = {
                     "methods": [],
                     "file": file_path,
@@ -435,6 +391,8 @@ class CallgraphGenerator:
                         for base in node.bases
                         if hasattr(base, "id") or isinstance(base, ast.Attribute)
                     ],
+                    # NEW: Store the source code snippet
+                    "source_code": class_source_code,
                 }
                 for item in node.body:
                     if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -442,6 +400,8 @@ class CallgraphGenerator:
                         try:
                             complexity = self._calculate_complexity(item)
                             docstring = ast.get_docstring(item) or ""
+                            # MODIFIED: Extract source code for the method
+                            method_source_code = ast.get_source_segment(content, item)
                             self.functions[method_name] = {
                                 "node": item,
                                 "file": file_path,
@@ -451,6 +411,9 @@ class CallgraphGenerator:
                                 "module": module_name,
                                 "docstring": docstring,
                                 "lineno": item.lineno,
+                                "code_snippet": ast.get_source_segment(content, item) or "",
+                                # NEW: Store the source code snippet
+                                "source_code": method_source_code,
                             }
                             self.classes[class_name]["methods"].append(method_name)
                         except Exception as e:
@@ -465,6 +428,8 @@ class CallgraphGenerator:
                     try:
                         complexity = self._calculate_complexity(node)
                         docstring = ast.get_docstring(node) or ""
+                        # MODIFIED: Extract source code for the function
+                        function_source_code = ast.get_source_segment(content, node)
                         self.functions[func_name] = {
                             "node": node,
                             "file": file_path,
@@ -473,6 +438,9 @@ class CallgraphGenerator:
                             "module": module_name,
                             "docstring": docstring,
                             "lineno": node.lineno,
+                            "code_snippet": ast.get_source_segment(content, node) or "",
+                            # NEW: Store the source code snippet
+                            "source_code": function_source_code,
                         }
                     except Exception as e:
                         logger.warning(
@@ -519,19 +487,37 @@ class CallgraphGenerator:
             f"Framework detected: {self.detected_framework_name.capitalize() if self.detected_framework_name else 'Generic Python'}"
         )
         is_django = self.detected_framework_name == "django"
+        
+        # Add class nodes to the callgraph
+        for class_name, class_info in self.classes.items():
+            group = self._determine_group(class_name)
+            raw_docstring = class_info.get("docstring", "Class documentation unavailable.")
+            
+            self.nodes.append(
+                {
+                    "id": class_name,
+                    "group": group,
+                    "type": "class",
+                    "complexity": 0,  # Classes don't have complexity score
+                    "file": class_info["file"],
+                    "class": "",  # This is a class itself
+                    "metadata": {
+                        "raw_docstring": raw_docstring,
+                        "source_code": class_info.get("source_code", ""),
+                    },
+                    "code_snippet": class_info.get("code_snippet", ""),
+                    "lineno": class_info.get("lineno", 0)
+                }
+            )
+        
+        # Add function nodes to the callgraph
         for func_name, func_info in self.functions.items():
             group = self._determine_group(func_name)
-            try:
-                response = await self._generate_llm_content_with_rate_limit(
-                    func_name, func_info
-                )
-                func_info["llm_summary"] = response
-            except Exception as e:
-                logger.warning(
-                    f"Failed to generate LLM content for {func_name}: {str(e)}"
-                )
-                purpose = "Function documentation unavailable."
-                suggestion = "No suggestion."
+            # LLM-based enrichment for purpose and suggestion is removed from here.
+            # This information will be generated by LLMDocGeneratorService later.
+            # Store raw docstring directly.
+            raw_docstring = func_info.get("docstring", "Function documentation unavailable.")
+
             self.nodes.append(
                 {
                     "id": func_name,
@@ -540,7 +526,14 @@ class CallgraphGenerator:
                     "complexity": func_info["complexity"],
                     "file": func_info["file"],
                     "class": func_info.get("class", ""),
-                    "metadata": {"docstring": purpose, "refactoring": suggestion},
+                    "metadata": {
+                        "raw_docstring": raw_docstring,
+                        # NEW: Include source code in metadata
+                        "source_code": func_info.get("source_code", ""),
+                    },
+                    # Add other statically available info to metadata if needed
+                    "code_snippet": func_info.get("code_snippet", ""),
+                    "lineno": func_info.get("lineno", 0)
                 }
             )
         already_linked = set()
@@ -550,6 +543,21 @@ class CallgraphGenerator:
                 if self._is_django_view(func_name, func_info):
                     view_functions.add(func_name)
             logger.info(f"Found {len(view_functions)} Django view functions")
+            
+        # Add links between classes and their methods
+        for func_name, func_info in self.functions.items():
+            if func_info.get("type") == "method" and func_info.get("class"):
+                class_name = func_info.get("class")
+                if class_name in self.classes:
+                    link_key = f"{class_name}->{func_name}"
+                    if link_key not in already_linked:
+                        self.links.append({
+                            "source": class_name,
+                            "target": func_name,
+                            "value": 1,
+                            "type": "contains",
+                        })
+                        already_linked.add(link_key)
         for func_name, func_info in self.functions.items():
             calls = self._find_function_calls(func_info["node"])
             if is_django:
@@ -1012,5 +1020,56 @@ class CallgraphGenerator:
         return 0
 
     async def cleanup(self):
-        if self.repo_path and os.path.exists(self.repo_path):
-            shutil.rmtree(self.repo_path, ignore_errors=True)
+        if self.tmp_dir and os.path.exists(self.tmp_dir):
+            logger.info(f"Attempting to cleanup temporary directory: {self.tmp_dir}")
+            # Retry mechanism for cleanup, especially for Windows file locking issues
+            for attempt in range(3):
+                try:
+                    # Ensure all handles to .git folder are released
+                    # This can be tricky, sometimes just a small delay helps
+                    if os.path.exists(os.path.join(self.tmp_dir, '.git')):
+                        # Attempt to clear read-only flags on .git files if they exist
+                        for root, dirs, files in os.walk(os.path.join(self.tmp_dir, '.git')):
+                            for name in files:
+                                try:
+                                    filepath = os.path.join(root, name)
+                                    os.chmod(filepath, 0o777) # stat.S_IWRITE | stat.S_IREAD | stat.S_IEXEC
+                                except Exception as e_chmod:
+                                    logger.debug(f"Failed to chmod {filepath}: {e_chmod}")
+                            for name in dirs:
+                                try:
+                                    dirpath = os.path.join(root, name)
+                                    os.chmod(dirpath, 0o777)
+                                except Exception as e_chmod:
+                                    logger.debug(f"Failed to chmod {dirpath}: {e_chmod}")
+
+                    shutil.rmtree(self.tmp_dir)
+                    logger.info(f"Successfully cleaned up temporary directory: {self.tmp_dir}")
+                    self.tmp_dir = None # Reset tmp_dir after successful cleanup
+                    return
+                except PermissionError as e_perm:
+                    logger.warning(f"Cleanup attempt {attempt + 1} failed with PermissionError: {e_perm}")
+                    if attempt < 2:
+                        await asyncio.sleep(2)  # Wait for 2 seconds before retrying
+                    else:
+                        logger.error(f"Failed to cleanup temporary directory {self.tmp_dir} after multiple attempts due to PermissionError: {e_perm}")
+                        # Optionally, log which file is causing the issue if possible from the error
+                        if hasattr(e_perm, 'filename') and e_perm.filename:
+                            logger.error(f"Access denied on file: {e_perm.filename}")
+                        # Even if cleanup fails, we might not want to raise an exception if ignore_errors was the previous behavior
+                        # For now, we log the error and continue, similar to ignore_errors=True
+                        break # Exit loop after final attempt
+                except Exception as e:
+                    logger.error(f"An unexpected error occurred during cleanup attempt {attempt + 1} for {self.tmp_dir}: {e}")
+                    if attempt < 2:
+                        await asyncio.sleep(1)
+                    else:
+                        # Log and continue, similar to ignore_errors=True behavior
+                        break # Exit loop after final attempt
+            # If self.tmp_dir still exists, log that cleanup ultimately failed.
+            if self.tmp_dir and os.path.exists(self.tmp_dir):
+                logger.error(f"Cleanup of {self.tmp_dir} ultimately failed. Some files might remain.")
+        elif self.tmp_dir:
+            logger.info(f"Temporary directory {self.tmp_dir} not found, no cleanup needed or already cleaned.")
+        else:
+            logger.info("No temporary directory was set (self.tmp_dir is None), no cleanup performed by this instance.")

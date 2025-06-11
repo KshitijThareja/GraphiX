@@ -31,6 +31,7 @@ from ..services.auth import get_current_user
 from ..models.base import Base, oauth2_scheme, settings, get_db
 import traceback
 import google.generativeai as genai
+import shutil
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analysis")
@@ -154,9 +155,7 @@ async def generate_callgraph(
     db: Session = Depends(get_db),
     background_tasks: BackgroundTasks = None,
 ):
-    status_log = [] # Initialize status_log here
-    status_log.append(f"Received request for {request_model.repo_url}")
-    status_log = [] # Initialize status_log here
+    status_log = []
     status_log.append(f"Received request for {request_model.repo_url}")
 
     try:
@@ -178,9 +177,10 @@ async def generate_callgraph(
             logger.info(f"Using standard callgraph generator for {repo_url}")
             generator = CallgraphGenerator()
 
-        # Generate callgraph
+        # This one call now correctly runs the entire analysis chain.
+        # We set perform_cleanup=False because the background task will handle it.
         callgraph = await generator.analyze_repository(
-            repo_path=repo_url, timeout=600, clone=is_remote
+            repo_path=repo_url, timeout=600, perform_cleanup=False
         )
 
         # Store the result in the database
@@ -228,9 +228,9 @@ async def generate_callgraph(
                 documentation_id,
                 repository_id,
                 repo_url,
-                is_remote,
                 callgraph,
-                request_model.framework_hint
+                request_model.framework_hint,
+                generator.temp_repo_path # Pass the temporary path for cleanup
             )
         else:
             # If no background_tasks available, start a task directly
@@ -240,9 +240,9 @@ async def generate_callgraph(
                     documentation_id,
                     repository_id,
                     repo_url,
-                    is_remote,
                     callgraph,
-                    request_model.framework_hint
+                    request_model.framework_hint,
+                    generator.temp_repo_path # Pass the temporary path for cleanup
                 )
             )
         
@@ -324,6 +324,7 @@ async def generate_callgraph(
                 "edge_count": len(callgraph.get("links", [])),
             },
             "status_log": status_log,
+            "documentation_id": documentation_id  # <-- CRUCIAL: Ensure this line is here
         }
         logger.info(
             f"Full JSON response for {request_model.repo_url}: {json.dumps(final_response_data, indent=2, default=str)}"
@@ -358,10 +359,10 @@ async def generate_callgraph(
             },
         )
     finally:
-        if generator:
-            await generator.cleanup()
-        status_log.append("Cleanup complete.")
+        # Cleanup is now handled by the background task
+        status_log.append("Initial request processing complete. Documentation generation and cleanup in background.")
 
+from ..services.callgraph_enrichment_service import enrich_django, enrich_flask
 
 @router.post("/enrich")
 async def enrich_callgraph(
@@ -373,9 +374,9 @@ async def enrich_callgraph(
 ):
     try:
         if framework == "django":
-            return _enrich_django(callgraph)
+            return enrich_django(callgraph)
         elif framework == "flask":
-            return _enrich_flask(callgraph)
+            return enrich_flask(callgraph)
         return callgraph
     except Exception as e:
         raise HTTPException(
@@ -505,9 +506,9 @@ async def _generate_documentation_background(
     documentation_id: str,
     repository_id: str,
     repo_url: str,
-    is_remote: bool,
     callgraph: dict = None,
-    framework_hint: str = "generic"
+    framework_hint: str = "generic",
+    temp_repo_path: Optional[str] = None # Add temp_repo_path for cleanup
 ):
     """
     Background task to generate documentation based on callgraph data.
@@ -518,36 +519,36 @@ async def _generate_documentation_background(
     
     try:
         logger.info(f"Starting documentation generation for {repo_url}")
-        documentation_service = DocumentationService(framework_hint=framework_hint)
-        
+        documentation_service = DocumentationService(
+            framework_hint=framework_hint, 
+            repository_id=repository_id # Ensure this is passed
+        )
         # Use the callgraph data if provided, otherwise analyze the repository
         if callgraph:
             logger.info("Using existing callgraph data for documentation")
             # Extract documentation from callgraph
-            doc_result = await documentation_service.generate_from_callgraph(
-                repo_path=repo_url if not is_remote else None,
-                callgraph_result=callgraph,
-                clone=is_remote
+            if "metadata" not in callgraph:
+                callgraph["metadata"] = {}
+            if "repository_id" not in callgraph["metadata"]:
+                callgraph["metadata"]["repository_id"] = repository_id
+
+            documentation_result = await documentation_service.generate_from_callgraph(
+                callgraph_result=callgraph
             )
-        else:
-            # Clone and analyze repository if callgraph not provided
-            logger.info("Analyzing repository for documentation")
-            doc_result = await documentation_service.analyze_repository(
-                repo_path=repo_url,
-                timeout=600,
-                clone=is_remote
-            )
+        # If callgraph generation failed, documentation_result will be None or an error.
+        # The direct documentation generation from repo_path by DocumentationService was removed.
+        # We now rely on generate_from_callgraph which uses in-memory data.
         
         # Count the elements by type
-        modules_count = len(doc_result.get("modules", []))
-        classes_count = len(doc_result.get("classes", []))
-        functions_count = len(doc_result.get("functions", []))
+        modules_count = len(documentation_result.get("modules", []))
+        classes_count = len(documentation_result.get("classes", []))
+        functions_count = len(documentation_result.get("functions", []))
         
         # Update documentation store with results
         if documentation_id in documentation_store:
             documentation_store[documentation_id].update({
                 "status": "completed",
-                "documentation": doc_result,
+                "documentation": documentation_result,
                 "modules_count": modules_count,
                 "classes_count": classes_count,
                 "functions_count": functions_count,
@@ -559,13 +560,13 @@ async def _generate_documentation_background(
             
             # Generate markdown documentation
             try:
-                markdown_doc = await documentation_service.generate_markdown_documentation(doc_result)
+                markdown_doc = await documentation_service.generate_markdown_documentation(documentation_result)
                 documentation_store[documentation_id]["markdown_files"] = {"README.md": markdown_doc}
                 
                 # Add a summary for frontend display
-                modules_count = len(doc_result.get("modules", []))
-                classes_count = len(doc_result.get("classes", []))
-                functions_count = len(doc_result.get("functions", []))
+                modules_count = len(documentation_result.get("modules", []))
+                classes_count = len(documentation_result.get("classes", []))
+                functions_count = len(documentation_result.get("functions", []))
                 
                 documentation_store[documentation_id]["summary"] = {
                     "modules": modules_count,
@@ -592,6 +593,14 @@ async def _generate_documentation_background(
                 "status": "failed",
                 "error": str(e)
             })
+    finally:
+        if temp_repo_path and os.path.exists(temp_repo_path):
+            logger.info(f"Background task cleaning up temporary directory: {temp_repo_path}")
+            try:
+                shutil.rmtree(temp_repo_path)
+            except Exception as e_cleanup:
+                logger.error(f"Error during background cleanup of {temp_repo_path}: {e_cleanup}")
+
 
 
 @router.post("/documentation")
@@ -631,7 +640,8 @@ async def generate_documentation(
                 repo_url,
                 is_remote,
                 None,  # No callgraph, will generate as needed
-                request.framework_hint
+                request.framework_hint,
+                None # No temp_repo_path for this path, as callgraph is not generated here
             )
         else:
             # If no background_tasks available, start a task directly
@@ -642,7 +652,8 @@ async def generate_documentation(
                     repo_url,
                     is_remote,
                     None,  # No callgraph, will generate as needed
-                    request.framework_hint
+                request.framework_hint,
+                None # No temp_repo_path for this path, as callgraph is not generated here
                 )
             )
         

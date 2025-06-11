@@ -22,6 +22,9 @@ interface ChatInterfaceProps {
   onHighlightNode?: (nodeId: string) => void;
 }
 
+// ... (rest of your imports)
+
+// Interface and Component Definition
 export default function ChatInterface({
   repositoryId,
   className,
@@ -131,10 +134,10 @@ export default function ChatInterface({
       }
 
       const data = await response.json();
-      
+
       // Extract context used from the response
       const contextUsed = data.context_used || [];
-      
+
       // Transform context items into our CodeContext format
       const newCodeContext = contextUsed.map((ctx: any) => ({
         id: ctx.id || `ctx-${Math.random().toString(36).substr(2, 9)}`,
@@ -162,7 +165,7 @@ export default function ChatInterface({
           error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive",
       });
-      
+
       // Add error message
       setMessages((prev) => [
         ...prev,
@@ -190,7 +193,7 @@ export default function ChatInterface({
       // This will depend on how your graph nodes are identified
       const nodeId = item.id;
       onHighlightNode(nodeId);
-      
+
       toast({
         title: "Node highlighted",
         description: `Highlighted ${item.name} in the callgraph`,
@@ -200,10 +203,10 @@ export default function ChatInterface({
 
   const handleCodeFromMessage = (code: string) => {
     // Search for the code in context or try to find a matching node
-    const matchingContext = codeContext.find(ctx => 
+    const matchingContext = codeContext.find(ctx =>
       ctx.code.includes(code) || code.includes(ctx.code)
     );
-    
+
     if (matchingContext && onHighlightNode) {
       onHighlightNode(matchingContext.id);
       toast({
@@ -254,18 +257,28 @@ export default function ChatInterface({
         </CardContent>
         <CardFooter className="p-4 border-t">
           <div className="flex w-full items-center space-x-2">
+            {/* Input Field - CHECK CSS and DISABLED */}
             <Input
               placeholder="Ask a question about your codebase..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={isLoading || !sessionId}
               className="flex-1"
             />
+              {/*  console.log({ isLoading, sessionId }) to check the current state*/}
+              {/*  Add console.log to check the values*/}
+              {/*  <Input
+                  placeholder="Ask a question about your codebase..."
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="flex-1"
+                />
+            */}
+
             <Button
               size="icon"
               onClick={handleSendMessage}
-              disabled={isLoading || !input.trim() || !sessionId}
             >
               {isLoading ? (
                 <RefreshCw className="h-4 w-4 animate-spin" />
@@ -276,11 +289,11 @@ export default function ChatInterface({
           </div>
         </CardFooter>
       </Card>
-      
+
       <div className="col-span-1 h-full">
-        <CodeContextPanel 
-          contextItems={codeContext} 
-          onItemHighlight={handleCodeHighlight} 
+        <CodeContextPanel
+          contextItems={codeContext}
+          onItemHighlight={handleCodeHighlight}
         />
       </div>
     </div>

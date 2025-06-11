@@ -105,14 +105,13 @@ export default function CallgraphVisualization({
     const simulationLinks = validSimulationLinks;
     const simulation = d3
       .forceSimulation(simulationNodes)
-      .force(
-        "link",
+      .force("link",
         d3
           .forceLink(validSimulationLinks)
           .id((d_sim: d3.SimulationNodeDatum) => (d_sim as CallgraphNode).id)
-          .distance(200), 
+          .distance(150), // Adjusted distance for better spacing
       )
-      .force("charge", d3.forceManyBody().strength(-1000)) 
+      .force("charge", d3.forceManyBody().strength(-500)) // Adjusted strength for less repulsion
       .force("center", d3.forceCenter(width / 2, height / 2))
       .force(
         "collide",
@@ -198,7 +197,7 @@ export default function CallgraphVisualization({
       .attr("dy", (d) => attributes.nodeSize(d) + 15)
       .attr("font-size", "12px")
       .attr("fill", "#333")
-      .text((d) => attributes.nodeLabel(d))
+      .text((d) => d.name || d.id) // Use d.name for label, fallback to d.id
       .style("pointer-events", "none");
     const tooltip = d3
       .select("body")

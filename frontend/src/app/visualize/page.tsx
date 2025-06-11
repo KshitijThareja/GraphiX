@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,6 +26,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/providers/auth-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCallgraph } from "@/context/CallgraphContext";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 export default function VisualizePage() {
   const {
     repoUrl,
@@ -35,8 +36,11 @@ export default function VisualizePage() {
     metrics,
     setMetrics,
     clearCallgraphData,
+    documentation,
+    setDocumentation,
   } = useCallgraph();
   const [isLoading, setIsLoading] = useState(false);
+  const [isDocLoading, setIsDocLoading] = useState(false);
   const [useResearchGrade, setUseResearchGrade] = useState(false);
   const [frameworkHint, setFrameworkHint] = useState("django");
   const [contextSensitivity, setContextSensitivity] = useState<number>(3);
@@ -49,6 +53,80 @@ export default function VisualizePage() {
   const MAX_RETRIES = 3;
   const REQUEST_TIMEOUT = 200000;
   const RETRY_DELAY = 5000;
+
+  // Function to fetch documentation with polling
+  const fetchDocumentation = async (documentationId: string, pollAttempt = 0) => {
+    if (!documentationId) return;
+    
+    const MAX_DOC_POLL_ATTEMPTS = 12; // Maximum polling attempts (12 * 10s = 2 minutes)
+    
+    // If we've reached the maximum number of polling attempts, stop polling
+    if (pollAttempt >= MAX_DOC_POLL_ATTEMPTS) {
+      console.log(`Documentation polling timed out after ${MAX_DOC_POLL_ATTEMPTS} attempts`);
+      toast({
+        title: "Documentation polling timeout",
+        description: "Documentation generation is taking longer than expected. You can try refreshing the page later.",
+        variant: "destructive",
+      });
+      setIsDocLoading(false);
+      return;
+    }
+    
+    setIsDocLoading(true);
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/documentation/${documentationId}`, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: 'no-store',
+      });
+      
+      if (response.ok) {
+        const docData = await response.json();
+        console.log(`Documentation data (attempt ${pollAttempt + 1}/${MAX_DOC_POLL_ATTEMPTS}):`, docData);
+        
+        // Check if documentation is still processing
+        if (docData.status === "processing") {
+          console.log("Documentation is still processing. Will poll again.");
+          toast({
+            title: "Documentation processing",
+            description: `Documentation is being generated (attempt ${pollAttempt + 1}/${MAX_DOC_POLL_ATTEMPTS}). Will check again shortly.`,
+          });
+          
+          // Only set isDocLoading to false if we're going to poll again
+          setIsDocLoading(false);
+          
+          // Poll again after 10 seconds with incremented attempt counter
+          setTimeout(() => fetchDocumentation(documentationId, pollAttempt + 1), 10000);
+        } else {
+          // Documentation is complete
+          setDocumentation(docData);
+          toast({
+            title: "Documentation retrieved",
+            description: "Successfully loaded documentation for the repository",
+          });
+          setIsDocLoading(false);
+        }
+      } else {
+        console.error("Failed to fetch documentation:", await response.text());
+        toast({
+          title: "Documentation retrieval failed",
+          description: "Could not load documentation for the repository",
+          variant: "destructive",
+        });
+        setIsDocLoading(false);
+      }
+    } catch (error) {
+      console.error("Error fetching documentation:", error);
+      toast({
+        title: "Documentation retrieval error",
+        description: "An error occurred while fetching documentation",
+        variant: "destructive",
+      });
+      setIsDocLoading(false);
+    }
+  };
+
   // Check if analysis is already in progress or complete
   const checkExistingResults = async () => {
     if (!repoUrl) return null;
@@ -108,6 +186,12 @@ export default function VisualizePage() {
         console.log("Retrieved callgraph data via polling:", normalizedData);
         setCallgraphData(normalizedData);
         
+        // Check for documentation_id and fetch documentation if available
+        if (normalizedData.metadata?.documentation_id) {
+          console.log("Documentation ID found via polling:", normalizedData.metadata.documentation_id);
+          fetchDocumentation(normalizedData.metadata.documentation_id);
+        }
+        
         toast({
           title: "Analysis complete",
           description: "Successfully retrieved analysis results for " + repoUrl,
@@ -160,6 +244,12 @@ export default function VisualizePage() {
         
         console.log("Using existing callgraph data:", normalizedData);
         setCallgraphData(normalizedData);
+        
+        // Check for documentation_id and fetch documentation if available
+        if (normalizedData.metadata?.documentation_id) {
+          console.log("Documentation ID found in existing data:", normalizedData.metadata.documentation_id);
+          fetchDocumentation(normalizedData.metadata.documentation_id);
+        }
         
         toast({
           title: "Analysis already complete",
@@ -223,6 +313,12 @@ export default function VisualizePage() {
       try {
         data = await response.json();
         console.log("Callgraph data:", data);
+        
+        // Check for documentation_id directly in the API response
+        if (data.documentation_id) {
+          console.log("Documentation ID found in API response:", data.documentation_id);
+          fetchDocumentation(data.documentation_id);
+        }
       } catch (jsonError) {
         console.error("JSON parsing error:", jsonError);
         throw new Error("Failed to parse response from server");
@@ -259,6 +355,12 @@ export default function VisualizePage() {
       
       console.log("Normalized callgraph data:", normalizedData);
       setCallgraphData(normalizedData);
+      
+      // Check for documentation_id and fetch documentation if available
+      if (normalizedData.metadata?.documentation_id) {
+        console.log("Documentation ID found:", normalizedData.metadata.documentation_id);
+        fetchDocumentation(normalizedData.metadata.documentation_id);
+      }
       
       const apiResponse = data; 
       const newMetrics = {
@@ -331,6 +433,8 @@ export default function VisualizePage() {
           body: JSON.stringify({
             query: chatQuery,
             repo_url: repoUrl,
+            callgraph_data: callgraphData, // Add callgraph data as context
+            documentation_data: documentation, // Add documentation data as context
           }),
           signal: controller.signal,
         },
@@ -543,8 +647,20 @@ export default function VisualizePage() {
                   placeholder="What does this function do?"
                   value={chatQuery}
                   onChange={(e) => setChatQuery(e.target.value)}
+                  disabled={!callgraphData}
                 />
-                <Button onClick={handleChat}>Ask</Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button onClick={handleChat} disabled={!callgraphData}>Ask</Button>
+                    </TooltipTrigger>
+                    {!callgraphData && (
+                      <TooltipContent>
+                        <p>Analyze a repository first to enable chat.</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
               </div>
               {chatResponse && (
                 <div className="mt-2">
@@ -579,6 +695,7 @@ export default function VisualizePage() {
             <TabsTrigger value="visualization">Interactive Analysis</TabsTrigger>
             <TabsTrigger value="metrics">Metrics</TabsTrigger>
             <TabsTrigger value="details">Function Details</TabsTrigger>
+            <TabsTrigger value="documentation">Documentation</TabsTrigger>
           </TabsList>
           <TabsContent value="visualization" className="mt-4">
             <div className="border rounded-lg overflow-hidden h-[800px]">
@@ -701,6 +818,90 @@ export default function VisualizePage() {
               </CardContent>
             </Card>
           </TabsContent>
+          <TabsContent value="documentation" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Repository Documentation</CardTitle>
+                <CardDescription>
+                  Generated documentation for the analyzed codebase
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isDocLoading ? (
+                  <div className="flex flex-col space-y-4">
+                    <Skeleton className="h-8 w-1/3" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-2/3" />
+                  </div>
+                ) : documentation ? (
+                  <div className="space-y-6">
+                    {documentation.overview && (
+                      <div>
+                        <h3 className="text-lg font-medium mb-2">Overview</h3>
+                        <div className="p-4 bg-muted rounded-lg">
+                          <p>{documentation.overview}</p>
+                        </div>
+                      </div>
+                    )}
+                    {documentation.architecture && (
+                      <div>
+                        <h3 className="text-lg font-medium mb-2">Architecture</h3>
+                        <div className="p-4 bg-muted rounded-lg">
+                          <p>{documentation.architecture}</p>
+                        </div>
+                      </div>
+                    )}
+                    {documentation.modules && documentation.modules.length > 0 && (
+                      <div>
+                        <h3 className="text-lg font-medium mb-2">Key Modules</h3>
+                        <div className="space-y-4">
+                          {documentation.modules.map((module: any, index: number) => (
+                            <div key={index} className="p-4 border rounded-lg">
+                              <h4 className="font-medium">{module.name}</h4>
+                              <p className="text-sm mt-1">{module.description}</p>
+                              {module.functions && module.functions.length > 0 && (
+                                <div className="mt-3">
+                                  <h5 className="text-sm font-medium mb-1">Functions:</h5>
+                                  <ul className="list-disc pl-5 text-sm">
+                                    {module.functions.map((func: any, funcIndex: number) => (
+                                      <li key={funcIndex}>
+                                        <span className="font-mono">{func.name}</span>: {func.description}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {documentation.dependencies && (
+                      <div>
+                        <h3 className="text-lg font-medium mb-2">Dependencies</h3>
+                        <div className="p-4 bg-muted rounded-lg">
+                          <p>{documentation.dependencies}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center p-8">
+                    <p className="text-muted-foreground">No documentation available for this repository.</p>
+                    {callgraphData?.metadata?.documentation_id && (
+                      <Button 
+                        onClick={() => fetchDocumentation(callgraphData.metadata.documentation_id)}
+                        className="mt-4"
+                      >
+                        Retry Loading Documentation
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       ) : (
         <Tabs defaultValue="empty" className="mt-4">
@@ -729,9 +930,9 @@ export default function VisualizePage() {
           </CardHeader>
           <CardContent>
             <pre>{JSON.stringify(dataset, null, 2)}</pre>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
+</CardContent>
+</Card>
+)}
+</div>
+);
 }

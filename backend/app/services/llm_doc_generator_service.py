@@ -15,6 +15,7 @@ import google.generativeai as genai
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 from app.models.base import settings
 from app.services.database import get_database
+from ..utils.ast_generator import ASTGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -168,6 +169,7 @@ class LLMDocGeneratorService:
         self.cache = ResponseCache(max_size=200)  # Cache up to 200 responses
         self.rate_limiter = RateLimiter(max_retries=3, base_delay=2.0, jitter=0.5)
         self.batch_processor = BatchProcessor(batch_size=5, delay_between_batches=2.0)
+        self.ast_generator = ASTGenerator()
         
         # Load configuration options
         self.config = {
@@ -219,7 +221,7 @@ class LLMDocGeneratorService:
         """
         Generates documentation (docstring and signature) for a given code node
         using the configured LLM. Implements caching, rate limiting, and error handling.
-        
+
         First checks MongoDB for existing documentation, then falls back to in-memory cache,
         and finally generates new documentation using the LLM if needed.
 
@@ -478,40 +480,98 @@ class LLMDocGeneratorService:
             return enriched_data
         
         try:
-            # Read and parse the source file
+            # Read the source file content
             with open(file_path, 'r', encoding='utf-8') as f:
                 source_code = f.read()
-            
-            tree = ast.parse(source_code, filename=file_path)
-            
-            # Identify the target node in the AST
-            target_ast_node = self._find_ast_node(tree, node_id, node_type)
-            
-            if not target_ast_node:
-                logger.debug(f"AST enrichment skipped: Could not find node {node_id} in {file_path}")
+
+            # Parse the file content using ASTGenerator
+            # Determine language for ASTGenerator (assuming python for now based on context)
+            # TODO: Enhance language detection if other file types are processed.
+            language_for_ast = 'python' 
+            source_code_bytes = source_code.encode('utf-8')
+            tree_sitter_ast = self.ast_generator.parse_file_content(source_code_bytes, language=language_for_ast)
+
+            if not tree_sitter_ast:
+                logger.warning(f"AST enrichment skipped: Failed to parse file {file_path} with ASTGenerator for node {node_data.get('id')}")
                 return enriched_data
             
-            # Extract detailed information based on node type
-            if node_type == 'function' or node_type == 'method':
-                # Extract function/method details
-                func_details = self._extract_function_details(target_ast_node, source_code)
-                enriched_data.update(func_details)
-                
-            elif node_type == 'class':
-                # Extract class details
-                class_details = self._extract_class_details(target_ast_node, source_code, tree)
-                enriched_data.update(class_details)
-                
-            elif node_type == 'module':
-                # Extract module details
-                module_details = self._extract_module_details(tree, source_code)
-                enriched_data.update(module_details)
+            logger.info(f"Successfully parsed file {file_path} with ASTGenerator for node {node_data.get('id')}")
+
+            # Use ASTGenerator to find the specific node and get its source code
+            # The 'node_id' from callgraph might be like 'file.py.ClassName.method_name' or 'file.py.function_name'
+            # We need to adapt this for find_node_and_get_source which expects 'ClassName.methodName' or 'function_name'
             
-            logger.info(f"Successfully enriched node {node_id} with AST data")
+            # Determine the identifier and type for ASTGenerator based on callgraph node_id and node_type
+            cg_node_id = node_data.get('id', '') # e.g., services.callgraph.CallgraphGenerator.analyze_repository
+            cg_node_type = node_data.get('type', '').lower() # e.g., 'method', 'function', 'class'
+            
+            # Prepare identifier for find_node_and_get_source
+            # It expects 'function_name', 'ClassName', or 'ClassName.method_name'
+            # The callgraph 'id' is often fully qualified, e.g., module.submodule.Class.method
+            # We need the simple name or Class.method part.
+            id_parts = cg_node_id.split('.')
+            ast_node_identifier = ''
+            
+            if cg_node_type == 'method' and len(id_parts) >= 2:
+                # Assuming the last two parts are ClassName.methodName
+                ast_node_identifier = f"{id_parts[-2]}.{id_parts[-1]}"
+            elif (cg_node_type == 'function' or cg_node_type == 'class') and len(id_parts) >= 1:
+                # Assuming the last part is the function/class name
+                ast_node_identifier = id_parts[-1]
+            else:
+                logger.warning(f"Could not determine a simple AST node identifier from callgraph ID '{cg_node_id}' and type '{cg_node_type}'. Skipping Tree-sitter source extraction.")
+
+            if ast_node_identifier and tree_sitter_ast:
+                try:
+                    # Read file content as bytes for Tree-sitter
+                    with open(file_path, 'rb') as fb:
+                        source_code_bytes = fb.read()
+
+                    extracted_source = self.ast_generator.find_node_and_get_source(
+                        ast_root_node=tree_sitter_ast, 
+                        node_identifier=ast_node_identifier, 
+                        target_node_type=cg_node_type, # Use callgraph's node type
+                        source_code_bytes=source_code_bytes
+                    )
+                    if extracted_source:
+                        enriched_data['ast_extracted_source'] = extracted_source
+                        logger.info(f"Successfully extracted source for '{ast_node_identifier}' from {file_path} using Tree-sitter.")
+                    else:
+                        logger.warning(f"Could not extract source for '{ast_node_identifier}' from {file_path} using Tree-sitter. Method returned None.")
+                except Exception as e_find_source:
+                    logger.error(f"Error calling find_node_and_get_source for '{ast_node_identifier}' in {file_path}: {e_find_source}", exc_info=True)
+            elif not tree_sitter_ast:
+                logger.warning(f"Skipping Tree-sitter source extraction for {cg_node_id} as tree_sitter_ast is None.")
+            elif not ast_node_identifier:
+                 logger.warning(f"Skipping Tree-sitter source extraction for {cg_node_id} as ast_node_identifier could not be determined.")
+            
+            # For now, we are not modifying the existing AST extraction logic which uses Python's 'ast' module.
+            # The plan is to eventually replace it or augment it with Tree-sitter.
+            # The following lines preserve the original 'ast' module based enrichment for now.
+            
+            py_ast_tree = ast.parse(source_code, filename=file_path)
+            target_py_ast_node = self._find_ast_node(py_ast_tree, node_id, node_type)
+
+            if not target_py_ast_node:
+                logger.debug(f"Python AST enrichment skipped: Could not find node {node_id} in {file_path} using 'ast' module")
+                # We still return enriched_data because Tree-sitter parsing might have been successful
+                # and we might add Tree-sitter specific data later.
+            else:
+                if node_type == 'function' or node_type == 'method':
+                    func_details = self._extract_function_details(target_py_ast_node, source_code)
+                    enriched_data.update(func_details)
+                elif node_type == 'class':
+                    class_details = self._extract_class_details(target_py_ast_node, source_code, py_ast_tree)
+                    enriched_data.update(class_details)
+                elif node_type == 'module':
+                    module_details = self._extract_module_details(py_ast_tree, source_code)
+                    enriched_data.update(module_details)
+                logger.info(f"Successfully enriched node {node_id} with Python 'ast' module data")
+
             return enriched_data
             
         except Exception as e:
-            logger.warning(f"Error enriching node data with AST for {node_data.get('id')}: {e}")
+            logger.warning(f"Error enriching node data with AST for {node_data.get('id')} in file {file_path}: {e}", exc_info=True)
             return enriched_data
             
     def _find_ast_node(self, tree: ast.AST, node_id: str, node_type: str) -> Optional[ast.AST]:
@@ -1240,11 +1300,13 @@ class LLMDocGeneratorService:
         
         # Output formatting instructions
         prompt.append(f"\n## OUTPUT FORMAT\n")
-        prompt.append("Please generate documentation in the following JSON format:")
+        prompt.append("Please generate a concise one-line summary, a detailed docstring, a corrected or inferred signature, and a refactoring suggestion. Provide the output in the following JSON format:")
         prompt.append("""```json
 {
-  "docstring": "A clear, concise docstring describing the code element.\n\nArgs:\n    param1: Description of param1\n    param2: Description of param2\n\nReturns:\n    Description of return value\n\nRaises:\n    ExceptionType: When and why this exception is raised",
-  "signature": "function_name(param1: type1, param2: type2 = default_value) -> return_type"
+  "summary": "A concise one-line summary of the code element's purpose.",
+  "docstring": "A detailed, well-formatted docstring for the code element. Include sections for Args, Returns, and Raises where appropriate.",
+  "signature": "The corrected or inferred signature of the code element (e.g., function_name(param1: type1, param2: type2) -> return_type).",
+  "suggestion": "One key suggestion for refactoring or improving the code element."
 }
 ```""")
         
